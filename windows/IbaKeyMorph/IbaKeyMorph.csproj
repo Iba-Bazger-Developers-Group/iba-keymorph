@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>..\..\assets\keymorph.ico</ApplicationIcon>
+    <AssemblyName>IbaKeyMorph</AssemblyName>
+    <RootNamespace>IbaKeyMorph</RootNamespace>
+    <AssemblyTitle>IBA KeyMorph</AssemblyTitle>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\assets\keymorph.ico" LogicalName="IbaKeyMorph.Assets.keymorph.ico" />
+    <EmbeddedResource Include="..\..\assets\switch.wav" LogicalName="IbaKeyMorph.Assets.switch.wav" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IbaKeyMorph.Core\IbaKeyMorph.Core.csproj" />
+  </ItemGroup>
+
+</Project>

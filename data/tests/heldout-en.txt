@@ -1,0 +1,36 @@
+# English words that are NOT in data/en.txt. Used by tests to check how well
+# the trigram model generalises (no false corrections, good recall).
+basketball umbrella kangaroo philosophy democracy algorithm journey adventure butterfly chemistry
+biology mathematics geography literature architecture furniture elephant giraffe penguin dolphin
+volcano earthquake hurricane thunder lightning blanket pillow mattress curtain carpet ceiling
+staircase elevator basement balcony chimney hammer screwdriver ladder bucket shovel envelope stamp
+receipt wallet purse necklace bracelet earring sweater jacket trousers sneakers slippers gloves scarf
+headphones microphone speaker charger battery cable adapter keyboarding printer scanner projector
+strawberry raspberry blueberry pineapple watermelon cucumber carrot onion garlic pepper cabbage
+mushroom pumpkin cinnamon vanilla yogurt butter pancake omelette noodles dumpling spaghetti lasagna
+champagne whiskey lemonade cocktail espresso cappuccino biscuit muffin doughnut pretzel popcorn
+hospitality accommodation reservation itinerary passport luggage suitcase backpack airport runway
+captaincy pilot steward harbour lighthouse anchor voyage sailor fisherman shepherd carpenter plumber
+electrician mechanic engineer architect lawyer journalist photographer musician painter sculptor
+dancer singer actor actress director producer novelist poet historian scientist chemist physicist
+astronomer telescope microscope laboratory experiment hypothesis theory evidence conclusion analysis
+statistics probability calculus geometry algebra equation variable parameter coefficient fraction
+percentage multiply subtract division remainder triangle rectangle cylinder sphere pyramid diagonal
+horizontal vertical parallel perpendicular diameter radius circumference perimeter volume density
+pressure gravity velocity acceleration momentum friction magnetism electricity radiation molecule
+protein vitamin mineral calcium nitrogen hydrogen carbon sodium potassium aluminium platinum
+emerald diamond sapphire crystal marble granite pebble boulder canyon glacier meadow prairie swamp
+jungle desert tundra savanna orchard vineyard harvest tractor barn stable cottage castle palace
+fortress cathedral chapel monastery temple mosque synagogue pilgrimage ceremony festival carnival
+parade fireworks lantern candle balloon ribbon wrapping invitation celebration anniversary graduation
+retirement promotion resignation interview candidate applicant employer employee colleague supervisor
+negotiation agreement contractual obligation liability insurance mortgage investment dividend
+shareholder inflation recession unemployment economy budget expenditure revenue profitable
+spreadsheet presentation conference workshop seminar webinar brainstorm whiteboard notebook stapler
+scissors pencil sharpener eraser highlighter marker crayon paintbrush canvas easel gallery exhibition
+sculpture portrait landscape masterpiece symphony orchestra conductor violin cello trumpet saxophone
+clarinet drummer guitarist pianist melody harmony rhythm tempo lyrics chorus verse album concert
+stadium tournament championship referee goalkeeper striker midfielder trophy medal podium marathon
+sprinter swimmer gymnastics wrestling boxing fencing archery skiing snowboard skateboard bicycle
+motorcycle scooter helicopter submarine spaceship rocket satellite astronaut galaxy universe comet
+asteroid meteor eclipse horizon sunrise sunset twilight midnight yesterday's weekday fortnight

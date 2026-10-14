@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>IbaKeyMorph.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\data\en.txt" LogicalName="IbaKeyMorph.Data.en.txt" />
+    <EmbeddedResource Include="..\..\data\ru.txt" LogicalName="IbaKeyMorph.Data.ru.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="IbaKeyMorph.Core.Tests" />
+  </ItemGroup>
+
+</Project>

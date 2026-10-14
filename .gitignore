@@ -1,0 +1,17 @@
+# .NET
+bin/
+obj/
+.vs/
+*.user
+windows/publish/
+
+# Swift
+macos/.build/
+macos/build/
+.swiftpm/
+xcuserdata/
+*.xcodeproj/
+
+# OS
+.DS_Store
+Thumbs.db

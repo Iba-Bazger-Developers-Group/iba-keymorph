@@ -1,0 +1,29 @@
+# Validation set: English words not used for tuning thresholds.
+abandon abbey abdomen abolish abrupt absorb abstract absurd abundant academy accelerate accent accessory
+accomplish accordion accountant accumulate accuse acre acrobat activate adjective admiral adolescent
+adorable aerial affection affordable afterward agile agriculture airplane aisle alarm algae alien
+alligator alphabet altitude aluminum amateur ambulance amendment amusement anatomy anchor ancestor
+anecdote angel ankle antenna antique anthem apron aquarium arcade archive arena armchair aroma
+arrogant artichoke ashtray asparagus aspirin athlete attic auction audition avalanche avocado awning
+axis backyard bacon badge badminton bakery bamboo bandage banjo banquet barbecue bargain barrel
+bathtub beard beaver beetle believer bellows beverage bias binoculars biscuit blizzard blossom
+blueprint bodyguard bonfire bookcase bookmark boulevard boutique bracket breeze broccoli brochure
+bronze broom bubble buckle buffalo bulldozer bumper bungalow burglar butcher cactus cafeteria
+calculator camel candle cannon canoe caramel cardboard cargo carnival carousel cashier casino
+cassette caterpillar cauliflower cavalry cellar cemetery cereal chalk chandelier chapel charcoal
+cheetah cherry chestnut chimpanzee chisel chocolate cinnamon citizen clarinet cliff clinic closet
+cobweb cockpit coconut cocoon coffin collar comedian compass composer condominium confetti
+consonant constellation cookbook copper coral corkscrew corridor costume cottage coupon coyote
+crab cradle crayon crocodile crossword crouton crown cupboard cupcake cushion custard cutlery
+daisy dandelion dashboard daughter dazzle decimal deer denim dentist deodorant detergent dew
+dialect dinosaur diploma dishwasher dizzy dock dolphin donkey doorbell dough dragon dragonfly
+drawbridge dresser driveway drizzle drought drum duckling dungeon dwarf eagle easel eggplant
+elbow elevator embassy emblem emperor encyclopedia envelope eraser escalator eyebrow fabric falcon
+faucet feather ferry fiddle fingerprint firefly fireplace flamingo flannel flashlight flute
+foliage footprint forehead fountain fox freckle freezer frost fudge funnel gadget galaxy gargoyle
+garlic gazelle gecko ginger glacier glider gloves goblin goggles gorilla gossip gravel greenhouse
+grill guitar gutter hamster handbag harmonica harness harp hatchet hazelnut hedgehog helmet
+hammock hippo hockey honeycomb hoodie hurdle hut iceberg igloo infantry inkwell insect iris ivory
+jaguar jasmine javelin jellyfish jigsaw jockey juggler jukebox kayak kennel kettle kidney kiwi
+knapsack koala lagoon lamb lamppost lava lawnmower leopard lettuce lilac lime lizard lobster
+locker locomotive lollipop lumber lunchbox magnet mailbox mammoth mango marshmallow mascot meadow
