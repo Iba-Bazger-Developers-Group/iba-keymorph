@@ -22,6 +22,8 @@ jobs:
   windows:
     name: Windows (tests, app, installer)
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -74,6 +76,21 @@ jobs:
           name: ui-snapshots-windows
           path: ui-snapshots/*.png
 
+      - name: Publish UI snapshots to branch ui-snapshots-windows
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          out="$(mktemp -d)"
+          cp ui-snapshots/*.png "$out/"
+          cd "$out"
+          git init -q -b snapshots
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "UI snapshots for $GITHUB_SHA"
+          git push -q -f "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git" HEAD:refs/heads/ui-snapshots-windows
+
       - name: Build installers (Inno Setup)
         shell: pwsh
         run: |
@@ -94,6 +111,8 @@ jobs:
   macos:
     name: macOS (tests, app)
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -130,6 +149,21 @@ jobs:
         with:
           name: ui-snapshots-macos
           path: ui-snapshots/*.png
+
+      - name: Publish UI snapshots to branch ui-snapshots-macos
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          out="$(mktemp -d)"
+          cp ui-snapshots/*.png "$out/"
+          cd "$out"
+          git init -q -b snapshots
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "UI snapshots for $GITHUB_SHA"
+          git push -q -f "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git" HEAD:refs/heads/ui-snapshots-macos
 
       - uses: actions/upload-artifact@v4
         with:
