@@ -16,6 +16,21 @@ final class KeyboardMonitor {
 
     var isRunning: Bool { tap != nil }
 
+    /// System uptime of the last key press the tap received.
+    private(set) var lastKeyDownAt: TimeInterval = 0
+
+    /// macOS turns off taps that respond too slowly; such a tap still exists but sees nothing.
+    var isEnabled: Bool {
+        guard let tap = tap else { return false }
+        return CGEvent.tapIsEnabled(tap: tap)
+    }
+
+    func reenable() {
+        if let tap = tap {
+            CGEvent.tapEnable(tap: tap, enable: true)
+        }
+    }
+
     func start() -> Bool {
         if tap != nil {
             return true
@@ -52,6 +67,8 @@ final class KeyboardMonitor {
         CGEvent.tapEnable(tap: tap, enable: true)
         self.tap = tap
         self.runLoopSource = source
+        // Keys pressed before the tap existed are not "missed" ones.
+        lastKeyDownAt = ProcessInfo.processInfo.systemUptime
         return true
     }
 
@@ -72,11 +89,13 @@ final class KeyboardMonitor {
     private func handle(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Bool {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             // macOS disables slow taps; turn it back on.
-            if let tap = tap {
-                CGEvent.tapEnable(tap: tap, enable: true)
-            }
-
+            Log.info("Keyboard tap was disabled by macOS (\(type == .tapDisabledByTimeout ? "timeout" : "user input")); re-enabled")
+            reenable()
             return false
+        }
+
+        if type == .keyDown {
+            lastKeyDownAt = ProcessInfo.processInfo.systemUptime
         }
 
         if event.getIntegerValueField(.eventSourceUserData) == KeyboardMonitor.marker {

@@ -150,6 +150,16 @@ jobs:
           fi
           kill "$app"
 
+      - name: End-to-end typing test (real keyboard input on the macOS desktop)
+        timeout-minutes: 5
+        env:
+          IBA_KEYMORPH_DIAGNOSTICS: "1"
+        run: |
+          swiftc -O -o macos/build/KeyMorphE2E macos/E2E/main.swift
+          # The runner's GUI user stays logged in; skip the first-launch settings window.
+          defaults write com.iba.keymorph onboarded -bool true
+          macos/build/KeyMorphE2E "$PWD/macos/build/IBA KeyMorph.app/Contents/MacOS/IBAKeyMorph"
+
       - name: UI snapshots
         timeout-minutes: 3
         run: |
@@ -217,6 +227,10 @@ jobs:
             - Для ноутбуков на ARM — файлы `arm64`
 
             **macOS 13+**
-            - `IBA-KeyMorph-${{ env.VERSION }}-macOS.zip` — распакуйте, перенесите в «Программы», первый запуск — правый щелчок → «Открыть», затем разрешите доступ в «Универсальном доступе»
+            - `IBA-KeyMorph-${{ env.VERSION }}-macOS.zip` — распакуйте и перенесите в «Программы».
+              Если macOS пишет, что не может проверить приложение: Системные настройки → Конфиденциальность и безопасность → «Всё равно открыть»
+              (или в Терминале: `xattr -dr com.apple.quarantine "/Applications/IBA KeyMorph.app"`).
+              Затем нажмите «Выдать доступ» и включите IBA KeyMorph в «Универсальном доступе». После обновления нажмите «Выдать доступ» ещё раз — старая запись заменится.
+              Программа живёт в строке меню (EN / RU); повторный запуск из «Программ» открывает настройки, журнал — в меню «Открыть журнал».
 
             Горячие клавиши: `Pause` / двойной `Shift` — исправить или отменить последнее слово; `Shift+Pause` / двойной `⌥` — исправить выделенный текст.

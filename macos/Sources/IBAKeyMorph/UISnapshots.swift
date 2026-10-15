@@ -9,10 +9,16 @@ enum UISnapshots {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let defaults = UserDefaults(suiteName: "com.iba.keymorph.snapshots") ?? .standard
         let settings = Settings(defaults: defaults)
+        let working = StatusInfo(running: true, layout: "EN", detail: "Нажатий перехвачено: 128 · исправлено слов: 7", problem: false)
         for tab in 0..<3 {
-            let view = SettingsView(settings: settings, currentLayout: "EN", initialTab: tab, onChange: {}, onClose: {})
+            let view = SettingsView(settings: settings, status: { working }, initialTab: tab, onChange: {}, onClose: {})
             save(view, size: NSSize(width: 640, height: 700), to: directory.appendingPathComponent("settings-\(tab + 1).png"))
         }
+
+        let noAccess = StatusInfo(
+            running: false, layout: "EN", detail: "Нет доступа к клавиатуре — нажмите «Выдать доступ…»", problem: true)
+        save(SettingsView(settings: settings, status: { noAccess }, onChange: {}, onClose: {}),
+             size: NSSize(width: 640, height: 700), to: directory.appendingPathComponent("settings-no-access.png"))
 
         save(RunningAppsPicker(excluded: [], onAdd: { _ in }), size: NSSize(width: 540, height: 540),
              to: directory.appendingPathComponent("picker.png"))

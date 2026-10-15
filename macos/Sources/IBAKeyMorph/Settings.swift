@@ -15,6 +15,7 @@ final class Settings: ObservableObject {
         static let exceptions = "exceptions"
         static let excludedApps = "excludedApps"
         static let onboarded = "onboarded"
+        static let diagnosticLog = "diagnosticLog"
     }
 
     static let defaultExcludedApps = [
@@ -45,6 +46,8 @@ final class Settings: ObservableObject {
     /// ⌥⌥: convert the selected text.
     @Published var doubleOptionHotkey: Bool { didSet { defaults.set(doubleOptionHotkey, forKey: Key.doubleOption) } }
     @Published var playSound: Bool { didSet { defaults.set(playSound, forKey: Key.playSound) } }
+    /// Writes every word and decision to the log (for troubleshooting).
+    @Published var diagnosticLog: Bool { didSet { defaults.set(diagnosticLog, forKey: Key.diagnosticLog) } }
     /// Words that are never corrected (normalised: lower case, ё → е).
     @Published private(set) var exceptions: [String]
     /// Bundle identifiers of apps where automatic correction is off.
@@ -65,6 +68,7 @@ final class Settings: ObservableObject {
             Key.doubleShift: true,
             Key.doubleOption: true,
             Key.playSound: false,
+            Key.diagnosticLog: false,
             Key.exceptions: [String](),
             Key.excludedApps: Settings.defaultExcludedApps,
         ])
@@ -75,6 +79,7 @@ final class Settings: ObservableObject {
         doubleShiftHotkey = defaults.bool(forKey: Key.doubleShift)
         doubleOptionHotkey = defaults.bool(forKey: Key.doubleOption)
         playSound = defaults.bool(forKey: Key.playSound)
+        diagnosticLog = defaults.bool(forKey: Key.diagnosticLog)
         exceptions = defaults.stringArray(forKey: Key.exceptions) ?? []
         excludedApps = defaults.stringArray(forKey: Key.excludedApps) ?? Settings.defaultExcludedApps
     }

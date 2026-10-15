@@ -14,6 +14,7 @@ enum IBA {
     static let text = Color(red: 236 / 255, green: 243 / 255, blue: 239 / 255)
     static let muted = Color(red: 143 / 255, green: 166 / 255, blue: 155 / 255)
     static let caption = Color(red: 214 / 255, green: 170 / 255, blue: 92 / 255)
+    static let warning = Color(red: 240 / 255, green: 140 / 255, blue: 110 / 255)
     static let backgroundNS = NSColor(red: 15 / 255, green: 26 / 255, blue: 23 / 255, alpha: 1)
 }
 
@@ -103,11 +104,20 @@ enum AppInfo {
     }
 }
 
+/// What the status card shows; re-read every second while the settings window is open.
+struct StatusInfo {
+    var running: Bool
+    var layout: String
+    var detail: String
+    var problem: Bool
+}
+
 struct SettingsView: View {
     @ObservedObject var settings: Settings
-    let currentLayout: String
+    let status: () -> StatusInfo
     let onChange: () -> Void
     let onClose: () -> Void
+    let onFixAccess: () -> Void
 
     @State private var tab = 0
     @State private var exceptionsText: String
@@ -118,15 +128,17 @@ struct SettingsView: View {
 
     init(
         settings: Settings,
-        currentLayout: String,
+        status: @escaping () -> StatusInfo,
         initialTab: Int = 0,
         onChange: @escaping () -> Void,
-        onClose: @escaping () -> Void
+        onClose: @escaping () -> Void,
+        onFixAccess: @escaping () -> Void = {}
     ) {
         self.settings = settings
-        self.currentLayout = currentLayout
+        self.status = status
         self.onChange = onChange
         self.onClose = onClose
+        self.onFixAccess = onFixAccess
         _tab = State(initialValue: initialTab)
         _exceptionsText = State(initialValue: settings.exceptions.joined(separator: "\n"))
         _launchAtLogin = State(initialValue: LoginItem.isEnabled)
@@ -177,16 +189,30 @@ struct SettingsView: View {
     }
 
     private var statusCard: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("СОСТОЯНИЕ").font(.system(size: 11, weight: .bold)).foregroundColor(IBA.caption)
-            Text(settings.enabled ? "Работает · \(currentLayout)" : "Выключено · \(currentLayout)")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundColor(settings.enabled ? IBA.text : IBA.muted)
-            Text("Версия \(AppResources.version)").foregroundColor(IBA.muted)
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+            let info = status()
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("СОСТОЯНИЕ").font(.system(size: 11, weight: .bold)).foregroundColor(IBA.caption)
+                    Text(!info.running ? "Не работает" : settings.enabled ? "Работает · \(info.layout)" : "Выключено · \(info.layout)")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(info.running && settings.enabled ? IBA.text : IBA.muted)
+                    Text(info.detail)
+                        .foregroundColor(info.problem ? IBA.warning : IBA.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Версия \(AppResources.version)").font(.system(size: 11)).foregroundColor(IBA.muted)
+                }
+
+                Spacer(minLength: 0)
+                if !info.running {
+                    Button("Выдать доступ…", action: onFixAccess)
+                        .buttonStyle(IBAButtonStyle(primary: true))
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(IBA.surface)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(IBA.surface)
     }
 
     private var tabBar: some View {
@@ -218,6 +244,8 @@ struct SettingsView: View {
             if let error = loginItemError {
                 Text(error).foregroundColor(IBA.caption).font(.callout)
             }
+
+            toggle("Подробный журнал: записывать каждое слово (для поиска проблем)", \.diagnosticLog)
 
             Text("Ошиблись с исправлением? Сразу дважды нажмите ⇧ Shift — слово вернётся и больше не будет исправляться.")
                 .foregroundColor(IBA.muted)
@@ -276,6 +304,8 @@ struct SettingsView: View {
                 .font(.system(size: 12))
                 .foregroundColor(IBA.muted)
             Spacer()
+            Button("Журнал") { Log.open() }
+                .buttonStyle(IBAButtonStyle())
             Button("Готово") {
                 saveExceptions()
                 onClose()
@@ -435,13 +465,20 @@ struct RunningAppsPicker: View {
 final class SettingsWindowController {
     private var window: NSWindow?
     private let settings: Settings
-    private let currentLayout: () -> String
+    private let status: () -> StatusInfo
     private let onChange: () -> Void
+    private let onFixAccess: () -> Void
 
-    init(settings: Settings, currentLayout: @escaping () -> String, onChange: @escaping () -> Void) {
+    init(
+        settings: Settings,
+        status: @escaping () -> StatusInfo,
+        onChange: @escaping () -> Void,
+        onFixAccess: @escaping () -> Void
+    ) {
         self.settings = settings
-        self.currentLayout = currentLayout
+        self.status = status
         self.onChange = onChange
+        self.onFixAccess = onFixAccess
     }
 
     func show() {
@@ -453,9 +490,10 @@ final class SettingsWindowController {
         if window == nil {
             let view = SettingsView(
                 settings: settings,
-                currentLayout: currentLayout(),
+                status: status,
                 onChange: onChange,
-                onClose: { [weak self] in self?.window?.close() })
+                onClose: { [weak self] in self?.window?.close() },
+                onFixAccess: onFixAccess)
             let window = NSWindow(contentViewController: NSHostingController(rootView: view))
             window.title = "IBA KeyMorph — настройки"
             window.styleMask = [.titled, .closable, .fullSizeContentView]

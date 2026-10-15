@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import Carbon
 import IOKit
 import IOKit.hidsystem
 import KeyMorphCore
@@ -34,10 +35,60 @@ enum Permissions {
         return AXIsProcessTrustedWithOptions([key: prompt] as CFDictionary)
     }
 
+    /// Input Monitoring: lets an event tap see keystrokes (Accessibility covers it too).
+    static var canListen: Bool { CGPreflightListenEventAccess() }
+
+    /// Lets the app post synthetic keystrokes (Accessibility covers it too).
+    static var canPost: Bool { CGPreflightPostEventAccess() }
+
     static func openAccessibilitySettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    /// Replaces the app's Accessibility entry with a fresh one and opens the settings pane.
+    /// An ad-hoc signed update no longer matches the entry the user enabled for the previous build:
+    /// the switch still looks on, but macOS denies access. A new entry only needs to be switched on.
+    static func resetAndRequest() {
+        let bundleId = Bundle.main.bundleIdentifier ?? "com.iba.keymorph"
+        let reset = Process()
+        reset.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        reset.arguments = ["reset", "Accessibility", bundleId]
+        do {
+            try reset.run()
+            reset.waitUntilExit()
+            Log.info("tccutil reset Accessibility \(bundleId): exit code \(reset.terminationStatus)")
+        } catch {
+            Log.info("tccutil reset failed: \(error.localizedDescription)")
+        }
+
+        _ = isTrusted(prompt: true)
+        openAccessibilitySettings()
+    }
+}
+
+enum SecureInput {
+    /// While secure keyboard entry is on (password fields, Terminal's "Secure Keyboard Entry", some
+    /// password managers), macOS hides keystrokes from every event tap.
+    static var isEnabled: Bool { IsSecureEventInputEnabled() }
+
+    /// The app that turned secure keyboard entry on.
+    static func ownerName() -> String? {
+        let root = IORegistryGetRootEntry(kIOMainPortDefault)
+        defer { IOObjectRelease(root) }
+        guard let property = IORegistryEntryCreateCFProperty(root, "IOConsoleUsers" as CFString, kCFAllocatorDefault, 0),
+              let users = property.takeRetainedValue() as? [[String: Any]] else {
+            return nil
+        }
+
+        for user in users {
+            if let pid = (user["kCGSSessionSecureInputPID"] as? NSNumber)?.int32Value, pid > 0 {
+                return NSRunningApplication(processIdentifier: pid)?.localizedName ?? "процесс \(pid)"
+            }
+        }
+
+        return nil
     }
 }
 
@@ -89,5 +140,9 @@ enum AppResources {
 
     static var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+    }
+
+    static var build: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "dev"
     }
 }

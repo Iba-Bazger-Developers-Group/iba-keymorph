@@ -28,9 +28,21 @@ final class KeyMorphController: NSObject {
     private var frontmostBundleId: String?
     private var excluded = false
     private var busy = false
+    private var watchdog: Timer?
+    private var lastWatchdogLog: TimeInterval?
+
+    private static let diagnosticsFromEnvironment = ProcessInfo.processInfo.environment["IBA_KEYMORPH_DIAGNOSTICS"] == "1"
+    private var diagnostics: Bool { settings.diagnosticLog || Self.diagnosticsFromEnvironment }
+
+    /// Key presses the tap received and words corrected since launch (shown in the menu and settings).
+    private(set) var keysSeen = 0
+    private(set) var corrections = 0
 
     /// Called after KeyMorph switched the layout itself (to refresh the menu bar title).
     var onLayoutSwitched: (() -> Void)?
+
+    /// Called when the event tap was lost and could not be recreated (usually: access was revoked).
+    var onStopped: (() -> Void)?
 
     init(settings: Settings, languages: LanguageStore) {
         self.settings = settings
@@ -58,7 +70,91 @@ final class KeyMorphController: NSObject {
 
     /// Starts the event tap; fails until the user grants Accessibility access.
     func start() -> Bool {
-        monitor.start()
+        guard monitor.start() else {
+            return false
+        }
+
+        Log.info("Keyboard tap started; layouts: \(describeLayouts()); current: \(inputSources.current()?.id ?? "none")")
+        if Set(inputSources.enabled.compactMap { $0.language?.code }).count < 2 {
+            Log.info("Automatic correction needs both an English and a Russian keyboard layout " +
+                     "(System Settings → Keyboard → Input Sources).")
+        }
+
+        watchdog?.invalidate()
+        watchdog = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.checkTap() }
+        }
+
+        return true
+    }
+
+    func describeLayouts() -> String {
+        let layouts = inputSources.enabled
+        guard !layouts.isEmpty else { return "none" }
+        return layouts.map { "\($0.shortName) \($0.id) \($0.language?.code ?? "(no dictionary)")" }
+            .joined(separator: ", ")
+    }
+
+    /// One line for the menu and the settings window: how it is going, or what stops KeyMorph.
+    var status: (text: String, problem: Bool) {
+        if !monitor.isRunning {
+            return Permissions.isTrusted(prompt: false)
+                ? ("Перехват клавиатуры не запущен — перезапустите IBA KeyMorph", true)
+                : ("Нет доступа к клавиатуре — нажмите «Выдать доступ…»", true)
+        }
+
+        if SecureInput.isEnabled {
+            let owner = SecureInput.ownerName().map { " в «\($0)»" } ?? ""
+            return ("Включён защищённый ввод\(owner): macOS прячет нажатия от всех программ", true)
+        }
+
+        if Set(inputSources.enabled.compactMap { $0.language?.code }).count < 2 {
+            return ("Нужны раскладки English и Русская (Настройки → Клавиатура → Источники ввода)", true)
+        }
+
+        if !settings.enabled {
+            return ("Выключено", false)
+        }
+
+        return ("Нажатий перехвачено: \(keysSeen) · исправлено слов: \(corrections)", false)
+    }
+
+    /// Recovers a tap that stopped receiving keys. macOS may disable a tap, and a tap created around a
+    /// permission change can stay silent; the HID system's own last key press tells us keys were missed.
+    private func checkTap() {
+        guard monitor.isRunning else { return }
+        if !monitor.isEnabled {
+            monitor.reenable()
+            logWatchdog("Keyboard tap was found disabled; re-enabled")
+            return
+        }
+
+        let sinceKey = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: .keyDown)
+        let keyAt = ProcessInfo.processInfo.systemUptime - sinceKey
+        guard sinceKey > 0.5, sinceKey < 10, keyAt > monitor.lastKeyDownAt + 1, !SecureInput.isEnabled else {
+            return
+        }
+
+        engine.reset()
+        monitor.stop()
+        if monitor.start() {
+            logWatchdog("Keyboard tap did not receive keys pressed \(String(format: "%.1f", sinceKey)) s ago; recreated it")
+        } else {
+            watchdog?.invalidate()
+            watchdog = nil
+            Log.info("Keyboard tap did not receive keys and could not be recreated (access revoked?)")
+            onStopped?()
+        }
+    }
+
+    private func logWatchdog(_ message: String) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if let last = lastWatchdogLog, now - last < 600 {
+            return
+        }
+
+        lastWatchdogLog = now
+        Log.info(message)
     }
 
     func applySettings() {
@@ -122,6 +218,7 @@ final class KeyMorphController: NSObject {
         case .keyUp:
             return swallowedKeyUps.remove(event.getIntegerValueField(.keyboardEventKeycode)) != nil
         case .keyDown:
+            keysSeen += 1
             return handleKeyDown(event, proxy: proxy)
         default:
             return false
@@ -198,7 +295,12 @@ final class KeyMorphController: NSObject {
                 }
             } else if doubleTap.keyUp(Tap.shift, nowMs: now), settings.enabled, settings.doubleShiftHotkey,
                       !busy, !excluded {
-                execute(engine.convertLastWord(layouts: inputSources.enabled), boundaryEvent: nil, proxy: proxy)
+                let result = engine.convertLastWord(layouts: inputSources.enabled)
+                if diagnostics {
+                    Log.info("Double Shift → " + (result.actions.isEmpty ? "nothing to convert" : describe(result.actions)))
+                }
+
+                execute(result, boundaryEvent: nil, proxy: proxy)
             }
         case kVK_Option, kVK_RightOption:
             let isDown = raw & (code == kVK_Option ? Self.leftOptionMask : Self.rightOptionMask) != 0
@@ -220,7 +322,14 @@ final class KeyMorphController: NSObject {
     }
 
     private func boundary(_ kind: BoundaryKind, event: CGEvent, proxy: CGEventTapProxy) -> Bool {
+        let word = diagnostics ? engine.currentWord : ""
         let result = engine.onBoundary(kind, layouts: inputSources.enabled)
+        if !word.isEmpty {
+            let layout = inputSources.current()
+            Log.info("Word \"\(word)\" in \(layout?.shortName ?? "?") (\(layout?.id ?? "?")) → " +
+                     (result.swallow ? describe(result.actions) : "keep"))
+        }
+
         guard result.swallow else {
             return false
         }
@@ -230,7 +339,25 @@ final class KeyMorphController: NSObject {
         return true
     }
 
+    private func describe(_ actions: [EngineAction]) -> String {
+        actions.map { action -> String in
+            switch action {
+            case .erase(let count): return "erase \(count)"
+            case .type(let text): return "type \"\(text)\""
+            case .replayBoundary: return "replay boundary"
+            case .switchLayout(let layout): return "switch to \(layout.shortName) (\(layout.id))"
+            case .capsLockOff: return "Caps Lock off"
+            case .learnException(let word): return "never correct \"\(word)\" again"
+            }
+        }
+        .joined(separator: "; ")
+    }
+
     private func execute(_ result: EngineResult, boundaryEvent: CGEvent?, proxy: CGEventTapProxy?) {
+        if result.actions.contains(where: { if case .type = $0 { return true } else { return false } }) {
+            corrections += 1
+        }
+
         var events: [CGEvent] = []
         var target: MacLayout?
         for action in result.actions {
@@ -278,6 +405,10 @@ final class KeyMorphController: NSObject {
         frontmostBundleId = app?.bundleIdentifier
         excluded = settings.isExcluded(bundleId: frontmostBundleId)
         engine.reset()
+        if diagnostics {
+            Log.info("App: \(app?.localizedName ?? "?") (\(frontmostBundleId ?? "no bundle id"))" +
+                     (excluded ? " — excluded in settings" : ""))
+        }
     }
 
     func refreshExclusion() {
