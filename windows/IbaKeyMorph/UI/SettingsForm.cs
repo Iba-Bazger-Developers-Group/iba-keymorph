@@ -3,108 +3,324 @@ using IbaKeyMorph.Settings;
 
 namespace IbaKeyMorph.UI;
 
-/// <summary>Settings window, built in code to keep the project designer-free.</summary>
+/// <summary>Settings window in the IBA style, built in code (no designer).</summary>
 internal sealed class SettingsForm : Form
 {
+    private const int ContentWidth = 600;
+
     private readonly AppSettings _settings;
-    private readonly CheckBox _autoSwitch = Check("Автоматически исправлять раскладку при наборе");
-    private readonly CheckBox _previousWord = Check("Исправлять и короткое слово перед исправленным («z ns» → «я ты»)");
-    private readonly CheckBox _capsLock = Check("Исправлять слова, набранные со случайно включённым Caps Lock");
-    private readonly CheckBox _pause = Check("Pause — исправить последнее слово, Shift+Pause — выделенный текст");
-    private readonly CheckBox _doubleShift = Check("Двойное нажатие Shift — исправить последнее слово");
-    private readonly CheckBox _sound = Check("Звук при переключении раскладки");
-    private readonly CheckBox _autostart = Check("Запускать IBA KeyMorph при входе в Windows");
-    private readonly TextBox _exceptions = Lines();
-    private readonly TextBox _apps = Lines();
-
-    public SettingsForm(AppSettings settings)
-    {
-        _settings = settings;
-        Text = "IBA KeyMorph — настройки";
-        Icon = TrayIcons.AppIcon;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        StartPosition = FormStartPosition.CenterScreen;
-        AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(560, 430);
-        Font = new Font("Segoe UI", 9f);
-
-        var tabs = new TabControl { Dock = DockStyle.Fill };
-        tabs.TabPages.Add(Page("Основные", General()));
-        tabs.TabPages.Add(Page("Исключения", WithCaption(
-            "Слова, которые никогда не исправляются (по одному в строке).\r\n" +
-            "Слово добавляется сюда автоматически, если отменить исправление клавишей Pause или двойным Shift.",
-            _exceptions)));
-        tabs.TabPages.Add(Page("Программы", WithCaption(
-            "Программы, в которых автоисправление отключено — имя процесса без .exe (по одному в строке).\r\n" +
-            "В окнах программ, запущенных от имени администратора, KeyMorph не вмешивается в ввод.",
-            _apps)));
-
-        var ok = new Button { Text = "Сохранить", DialogResult = DialogResult.OK, AutoSize = true };
-        var cancel = new Button { Text = "Отмена", DialogResult = DialogResult.Cancel, AutoSize = true };
-        ok.Click += (_, _) => SaveAndClose();
-        AcceptButton = ok;
-        CancelButton = cancel;
-
-        var buttons = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            FlowDirection = FlowDirection.RightToLeft,
-            AutoSize = true,
-            Padding = new Padding(8),
-        };
-        buttons.Controls.Add(cancel);
-        buttons.Controls.Add(ok);
-
-        Controls.Add(tabs);
-        Controls.Add(buttons);
-        LoadValues();
-    }
-
-    private static CheckBox Check(string text) => new() { Text = text, AutoSize = true, Margin = new Padding(3, 6, 3, 6) };
-
-    private static TextBox Lines() => new()
+    private readonly KeyMorphService _service;
+    private readonly ToggleRow _autoSwitch = new("Автоматически исправлять раскладку при наборе");
+    private readonly ToggleRow _previousWord = new("Исправлять и короткое слово перед исправленным («z ns» → «я ты»)");
+    private readonly ToggleRow _capsLock = new("Исправлять слова, набранные со случайным Caps Lock");
+    private readonly ToggleRow _pause = new("Pause — последнее слово, Shift+Pause — выделенный текст");
+    private readonly ToggleRow _doubleShift = new("Двойной Shift — исправить или отменить последнее слово");
+    private readonly ToggleRow _sound = new("Звук при переключении раскладки");
+    private readonly ToggleRow _autostart = new("Запускать IBA KeyMorph при входе в Windows");
+    private readonly TextBox _exceptions = new()
     {
         Multiline = true,
         ScrollBars = ScrollBars.Vertical,
-        Dock = DockStyle.Fill,
         AcceptsReturn = true,
-        Font = new Font("Consolas", 10f),
+        BorderStyle = BorderStyle.None,
+        Font = new Font("Consolas", 10.5f),
     };
 
-    private static TabPage Page(string title, Control content)
+    private readonly ListView _apps = new()
     {
-        var page = new TabPage(title) { Padding = new Padding(10) };
-        content.Dock = DockStyle.Fill;
-        page.Controls.Add(content);
+        View = View.Details,
+        FullRowSelect = true,
+        HeaderStyle = ColumnHeaderStyle.None,
+        BorderStyle = BorderStyle.None,
+        MultiSelect = true,
+    };
+
+    private readonly ImageList _appIcons = new() { ColorDepth = ColorDepth.Depth32Bit, ImageSize = new Size(20, 20) };
+    private readonly SortedDictionary<string, AppEntry> _excluded = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<(IbaButton Tab, Control Page)> _pages = new();
+    private readonly IbaButton _remove = new("Удалить") { Width = 110, Enabled = false };
+
+    public SettingsForm(AppSettings settings, KeyMorphService service)
+    {
+        _settings = settings;
+        _service = service;
+        Text = "IBA KeyMorph — настройки";
+        Icon = TrayIcons.AppIcon;
+        Font = Theme.Font(9.75f);
+        FormBorderStyle = FormBorderStyle.FixedSingle;
+        MaximizeBox = false;
+        StartPosition = FormStartPosition.CenterScreen;
+        AutoScaleMode = AutoScaleMode.Dpi;
+        ClientSize = new Size(ContentWidth + 48, 700);
+        Padding = new Padding(24, 20, 24, 20);
+        Theme.ApplyChrome(this);
+
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, BackColor = Theme.Background };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // header
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // status card
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // tabs
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // page
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // footer
+        root.Controls.Add(Header(), 0, 0);
+        root.Controls.Add(StatusCard(), 0, 1);
+        root.Controls.Add(Tabs(), 0, 2);
+
+        var pageHost = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Background, Margin = new Padding(0, 12, 0, 12) };
+        foreach (var (_, page) in _pages)
+        {
+            page.Dock = DockStyle.Fill;
+            pageHost.Controls.Add(page);
+        }
+
+        root.Controls.Add(pageHost, 0, 3);
+        root.Controls.Add(Footer(), 0, 4);
+        Controls.Add(root);
+
+        LoadValues();
+        ShowPage(0);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _appIcons.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private Control Header()
+    {
+        var header = new TableLayoutPanel
+        {
+            ColumnCount = 2,
+            RowCount = 2,
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Background,
+            Margin = new Padding(0, 0, 0, 16),
+        };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        var logo = new PictureBox
+        {
+            Image = Theme.Panda,
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Size = new Size(76, 76),
+            Margin = new Padding(0, 0, 16, 0),
+        };
+        header.Controls.Add(logo, 0, 0);
+        header.SetRowSpan(logo, 2);
+        header.Controls.Add(new Label
+        {
+            Text = "IBA KeyMorph",
+            AutoSize = true,
+            Font = Theme.Font(22f, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            Margin = new Padding(0, 6, 0, 0),
+        }, 1, 0);
+        header.Controls.Add(Theme.MutedText("Раскладка исправляется сама. EN ⇄ RU, Windows и macOS.", 480), 1, 1);
+        return header;
+    }
+
+    private Control StatusCard()
+    {
+        var card = new TableLayoutPanel
+        {
+            ColumnCount = 1,
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Surface,
+            Padding = new Padding(18, 14, 18, 14),
+            Margin = new Padding(0, 0, 0, 14),
+        };
+        card.Controls.Add(Theme.SectionCaption("Состояние"));
+
+        var layout = SafeLayout();
+        var running = _settings.Enabled;
+        card.Controls.Add(new Label
+        {
+            Text = running ? $"Работает · {layout}" : $"Выключено · {layout}",
+            AutoSize = true,
+            Font = Theme.Font(16f, FontStyle.Bold),
+            ForeColor = running ? Theme.Text : Theme.Muted,
+            Margin = new Padding(0, 0, 0, 2),
+        });
+
+        var installed = _service.Layouts.Installed;
+        var supported = installed.Where(l => l.Language is not null).Select(l => l.ShortName).Distinct().ToList();
+        var version = typeof(SettingsForm).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+        var detail = supported.Count >= 2
+            ? $"Версия {version} · раскладки: {string.Join(", ", installed.Select(l => l.ShortName).Distinct())}"
+            : $"Версия {version} · для автоисправления нужны раскладки EN и RU";
+        card.Controls.Add(new Label
+        {
+            Text = detail,
+            AutoSize = true,
+            ForeColor = supported.Count >= 2 ? Theme.Muted : Theme.Caption,
+            Font = Theme.Font(9.5f),
+        });
+        return card;
+    }
+
+    private Control Tabs()
+    {
+        var tabs = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Background,
+            Margin = Padding.Empty,
+            WrapContents = false,
+        };
+        AddPage(tabs, "Основные", GeneralPage());
+        AddPage(tabs, "Исключения", ExceptionsPage());
+        AddPage(tabs, "Программы", ProgramsPage());
+        return tabs;
+    }
+
+    private void AddPage(FlowLayoutPanel tabs, string title, Control page)
+    {
+        var index = _pages.Count;
+        var tab = new IbaButton(title, ButtonKind.Tab) { Width = 150, Margin = new Padding(0, 0, 10, 0) };
+        tab.Click += (_, _) => ShowPage(index);
+        tabs.Controls.Add(tab);
+        _pages.Add((tab, page));
+    }
+
+    internal void ShowPage(int index)
+    {
+        for (var i = 0; i < _pages.Count; i++)
+        {
+            _pages[i].Tab.Selected = i == index;
+            _pages[i].Page.Visible = i == index;
+        }
+    }
+
+    private Control GeneralPage()
+    {
+        var panel = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoScroll = true,
+            BackColor = Theme.Background,
+            Padding = new Padding(0, 6, 0, 0),
+        };
+        foreach (var toggle in new[] { _autoSwitch, _previousWord, _capsLock, _pause, _doubleShift, _sound, _autostart })
+        {
+            toggle.AutoSize = true;
+            panel.Controls.Add(toggle);
+        }
+
+        var hint = Theme.MutedText(
+            "Ошиблись с исправлением? Сразу нажмите Pause или дважды Shift — слово вернётся и больше не будет исправляться.",
+            ContentWidth);
+        hint.Margin = new Padding(0, 14, 0, 0);
+        panel.Controls.Add(hint);
+        return panel;
+    }
+
+    private Control ExceptionsPage()
+    {
+        var page = Column();
+        page.Controls.Add(Theme.MutedText(
+            "Слова, которые никогда не исправляются, по одному в строке. Слово попадает сюда само, если отменить исправление.",
+            ContentWidth), 0, 0);
+        Theme.DarkControl(_exceptions);
+        var box = Theme.Boxed(_exceptions, 10);
+        box.Dock = DockStyle.Fill;
+        box.Margin = new Padding(0, 10, 0, 0);
+        page.Controls.Add(box, 0, 1);
         return page;
     }
 
-    private static Control WithCaption(string caption, Control body)
+    private Control ProgramsPage()
     {
-        var layout = new TableLayoutPanel { ColumnCount = 1, RowCount = 2 };
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.Controls.Add(new Label { Text = caption, AutoSize = true, MaximumSize = new Size(520, 0), Margin = new Padding(0, 0, 0, 8) }, 0, 0);
-        layout.Controls.Add(body, 0, 1);
-        return layout;
+        var page = Column();
+        page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        page.Controls.Add(Theme.MutedText(
+            "В этих программах раскладка не исправляется автоматически. В окна программ, запущенных от имени " +
+            "администратора, KeyMorph не вмешивается.",
+            ContentWidth), 0, 0);
+
+        _apps.SmallImageList = _appIcons;
+        _apps.Columns.Add("Программа", 380);
+        _apps.Columns.Add("Процесс", 180);
+        Theme.DarkControl(_apps);
+        _apps.SelectedIndexChanged += (_, _) => _remove.Enabled = _apps.SelectedItems.Count > 0;
+        _apps.KeyDown += (_, e) =>
+        {
+            if (e.KeyCode == Keys.Delete)
+            {
+                RemoveSelectedApps();
+            }
+        };
+        _apps.Resize += (_, _) =>
+        {
+            _apps.Columns[1].Width = 180;
+            _apps.Columns[0].Width = Math.Max(150, _apps.ClientSize.Width - 184);
+        };
+        var box = Theme.Boxed(_apps, 6);
+        box.Dock = DockStyle.Fill;
+        box.Margin = new Padding(0, 10, 0, 10);
+        page.Controls.Add(box, 0, 1);
+
+        var addRunning = new IbaButton("Добавить из запущенных…", ButtonKind.Primary) { Width = 230 };
+        var addFile = new IbaButton("Выбрать .exe…") { Width = 150 };
+        addRunning.Click += (_, _) => AddFromRunning();
+        addFile.Click += (_, _) => AddFromFile();
+        _remove.Click += (_, _) => RemoveSelectedApps();
+        var buttons = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, BackColor = Theme.Background, WrapContents = false };
+        addRunning.Margin = addFile.Margin = new Padding(0, 0, 10, 0);
+        buttons.Controls.AddRange(new Control[] { addRunning, addFile, _remove });
+        page.Controls.Add(buttons, 0, 2);
+        return page;
     }
 
-    private Control General()
+    private static TableLayoutPanel Column()
     {
-        var panel = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true };
-        panel.Controls.AddRange(new Control[] { _autoSwitch, _previousWord, _capsLock, _pause, _doubleShift, _sound, _autostart });
-        panel.Controls.Add(new Label
+        var page = new TableLayoutPanel { ColumnCount = 1, BackColor = Theme.Background, Padding = new Padding(0, 6, 0, 0) };
+        page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        page.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        return page;
+    }
+
+    private Control Footer()
+    {
+        var footer = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, Dock = DockStyle.Fill, BackColor = Theme.Background };
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var hint = Theme.MutedText("Pause / Shift Shift — последнее слово · Shift+Pause — выделенный текст", 330);
+        hint.Anchor = AnchorStyles.Left;
+        footer.Controls.Add(hint, 0, 0);
+
+        var save = new IbaButton("Сохранить", ButtonKind.Primary) { Width = 140 };
+        var cancel = new IbaButton("Отмена") { Width = 120, DialogResult = DialogResult.Cancel };
+        save.Click += (_, _) => SaveAndClose();
+        AcceptButton = save;
+        CancelButton = cancel;
+        var buttons = new FlowLayoutPanel { AutoSize = true, BackColor = Theme.Background, WrapContents = false, Margin = Padding.Empty };
+        cancel.Margin = new Padding(10, 0, 0, 0);
+        save.Margin = Padding.Empty;
+        buttons.Controls.Add(save);
+        buttons.Controls.Add(cancel);
+        footer.Controls.Add(buttons, 1, 0);
+        return footer;
+    }
+
+    private string SafeLayout()
+    {
+        try
         {
-            AutoSize = true,
-            MaximumSize = new Size(520, 0),
-            Margin = new Padding(3, 16, 3, 3),
-            ForeColor = SystemColors.GrayText,
-            Text = "Если исправление было ошибочным, сразу нажмите Pause (или дважды Shift): слово вернётся " +
-                   "и больше не будет исправляться.",
-        });
-        return panel;
+            return _service.CurrentLayout().ShortName;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Could not read current layout", ex);
+            return "?";
+        }
     }
 
     private void LoadValues()
@@ -117,7 +333,88 @@ internal sealed class SettingsForm : Form
         _sound.Checked = _settings.PlaySound;
         _autostart.Checked = Autostart.IsEnabled;
         _exceptions.Text = string.Join(Environment.NewLine, _settings.Exceptions);
-        _apps.Text = string.Join(Environment.NewLine, _settings.ExcludedApps);
+
+        var running = AppCatalog.Running(includeBackground: true).ToDictionary(a => a.ProcessName, StringComparer.OrdinalIgnoreCase);
+        foreach (var name in _settings.ExcludedApps)
+        {
+            _excluded[name] = AppCatalog.Describe(name, running);
+        }
+
+        FillApps();
+    }
+
+    private void FillApps()
+    {
+        _apps.BeginUpdate();
+        _apps.Items.Clear();
+        foreach (var app in _excluded.Values.OrderBy(a => a.DisplayName, StringComparer.CurrentCultureIgnoreCase))
+        {
+            if (!_appIcons.Images.ContainsKey(app.ProcessName))
+            {
+                using var icon = AppCatalog.IconFor(app.Path);
+                _appIcons.Images.Add(app.ProcessName, icon.ToBitmap());
+            }
+
+            var item = new ListViewItem(app.DisplayName, app.ProcessName)
+            {
+                Tag = app,
+                UseItemStyleForSubItems = false,
+                ForeColor = Theme.Text,
+                BackColor = Theme.Surface,
+            };
+            item.SubItems.Add(app.ProcessName + ".exe", Theme.Muted, Theme.Surface, _apps.Font);
+            _apps.Items.Add(item);
+        }
+
+        _apps.EndUpdate();
+        _remove.Enabled = false;
+    }
+
+    private void AddFromRunning()
+    {
+        using var picker = new AppPickerForm(_excluded.Keys);
+        if (picker.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        foreach (var app in picker.Selected)
+        {
+            _excluded[app.ProcessName] = app;
+        }
+
+        FillApps();
+    }
+
+    private void AddFromFile()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Title = "Выберите программу",
+            Filter = "Программы (*.exe)|*.exe",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        var app = AppCatalog.FromFile(dialog.FileName);
+        _excluded[app.ProcessName] = app;
+        FillApps();
+    }
+
+    private void RemoveSelectedApps()
+    {
+        foreach (ListViewItem item in _apps.SelectedItems)
+        {
+            if (item.Tag is AppEntry app)
+            {
+                _excluded.Remove(app.ProcessName);
+            }
+        }
+
+        FillApps();
     }
 
     private void SaveAndClose()
@@ -129,11 +426,10 @@ internal sealed class SettingsForm : Form
         _settings.DoubleShiftHotkey = _doubleShift.Checked;
         _settings.PlaySound = _sound.Checked;
         _settings.Exceptions = new SortedSet<string>(
-            SplitLines(_exceptions.Text).Select(LanguageModel.Normalize),
+            _exceptions.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(LanguageModel.Normalize),
             StringComparer.Ordinal);
-        _settings.ExcludedApps = new SortedSet<string>(
-            SplitLines(_apps.Text).Select(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? a[..^4] : a),
-            StringComparer.OrdinalIgnoreCase);
+        _settings.ExcludedApps = new SortedSet<string>(_excluded.Keys, StringComparer.OrdinalIgnoreCase);
         _settings.Save();
 
         try
@@ -146,9 +442,7 @@ internal sealed class SettingsForm : Form
             MessageBox.Show(this, "Не удалось изменить автозапуск: " + ex.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
+        DialogResult = DialogResult.OK;
         Close();
     }
-
-    private static IEnumerable<string> SplitLines(string text) =>
-        text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

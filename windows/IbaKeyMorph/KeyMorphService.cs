@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Media;
 using IbaKeyMorph.Core;
 using IbaKeyMorph.Native;
@@ -24,6 +25,8 @@ internal sealed class KeyMorphService : IDisposable
     private readonly EngineOptions _engineOptions = new();
     private readonly TypingEngine _engine;
     private readonly SoundPlayer? _sound;
+    private readonly System.Windows.Forms.Timer _watchdog = new() { Interval = 2000 };
+    private long _lastWatchdogLog = long.MinValue;
     private bool _capsOn;
     private bool _capsDown;
     private bool _excluded;
@@ -37,12 +40,18 @@ internal sealed class KeyMorphService : IDisposable
         _hooks = new LowLevelHooks(OnKey, OnMouseDown, ex => Log.Error("Hook callback failed", ex));
         _capsOn = (GetKeyState(VK_CAPITAL) & 1) != 0;
         _sound = LoadSound();
+        _watchdog.Tick += (_, _) => CheckHooks();
         ApplySettings();
     }
 
     public LayoutService Layouts => _layouts;
 
-    public void Start() => _hooks.Install();
+    public void Start()
+    {
+        WarmUp();
+        _watchdog.Start(); // also retries if the first install fails
+        _hooks.Install();
+    }
 
     /// <summary>Hooks can be dropped by Windows after sleep or session switches; re-installing is cheap.</summary>
     public void Restart()
@@ -57,6 +66,7 @@ internal sealed class KeyMorphService : IDisposable
         _engineOptions.FixCapsLock = _settings.FixCapsLock;
         _engineOptions.CorrectPreviousShortWord = _settings.CorrectPreviousShortWord;
         _engine.Reset();
+        _foreground.Invalidate();
     }
 
     public WindowsLayout CurrentLayout() => _layouts.Current(GetForegroundWindow());
@@ -92,8 +102,79 @@ internal sealed class KeyMorphService : IDisposable
 
     public void Dispose()
     {
+        _watchdog.Dispose();
         _hooks.Dispose();
         _sound?.Dispose();
+    }
+
+    /// <summary>Windows silently drops a hook whose callback is slow once; pay model load + JIT up front.</summary>
+    private void WarmUp()
+    {
+        var timer = Stopwatch.StartNew();
+        var english = BuiltInLayouts.English;
+        IKeyboardLayout[] builtIn = { english, BuiltInLayouts.Russian };
+        var probe = new TypingEngine(new LayoutDecider(word => _settings.Exceptions.Contains(word)), new EngineOptions());
+        foreach (var c in "z ghbdtn ")
+        {
+            if (c == ' ')
+            {
+                probe.OnBoundary(BoundaryKind.Space, builtIn);
+            }
+            else
+            {
+                probe.OnCharacterKey(english.Find(c)!.Value, english);
+            }
+        }
+
+        probe.ConvertLastWord(builtIn);
+        probe.OnCharacterKey(english.Find('x')!.Value, english);
+        probe.OnBackspace();
+        TextConverter.PickConversion("ghbdtn", builtIn);
+
+        var installed = _layouts.Installed;
+        foreach (var layout in installed)
+        {
+            foreach (var code in layout.PrintableKeyCodes)
+            {
+                layout.Render(new KeyStroke(code, false, false));
+                layout.Render(new KeyStroke(code, true, false));
+            }
+        }
+
+        new ForegroundWindow().Update();
+        _ = _layouts.Current(GetForegroundWindow());
+        _ = new InputSender().Backspace(1).Text("x");
+
+        Log.Info($"Started in {timer.ElapsedMilliseconds} ms; layouts: " +
+                 string.Join(", ", installed.Select(l => $"{l.ShortName} {l.Id} {(l.Language is null ? "(no dictionary)" : l.Language.Code)}")));
+        if (installed.Count(l => l.Language is not null) < 2)
+        {
+            Log.Info("Automatic correction needs both an English and a Russian layout to be installed.");
+        }
+    }
+
+    private void CheckHooks()
+    {
+        if (!_hooks.LooksRemoved())
+        {
+            return;
+        }
+
+        try
+        {
+            _engine.Reset();
+            _hooks.Install();
+            var now = Environment.TickCount64;
+            if (now - _lastWatchdogLog > 600_000)
+            {
+                _lastWatchdogLog = now;
+                Log.Info("Keyboard hook stopped receiving input (removed by Windows?); reinstalled");
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Error("Could not reinstall keyboard hook", ex);
+        }
     }
 
     private bool OnKey(KeyboardEvent e)

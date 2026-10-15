@@ -57,7 +57,11 @@ internal static class NativeMethods
     public const uint TOKEN_QUERY = 0x0008;
     public const int TokenElevation = 20;
 
+    public const uint GW_OWNER = 4;
+
     public delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct KBDLLHOOKSTRUCT
@@ -105,6 +109,13 @@ internal static class NativeMethods
         public uint dwFlags;
         public uint time;
         public UIntPtr dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct LASTINPUTINFO
+    {
+        public uint cbSize;
+        public uint dwTime;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -224,6 +235,50 @@ internal static class NativeMethods
 
     [DllImport("kernel32.dll")]
     public static extern IntPtr GetCurrentProcess();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
+    /// <summary>Full path of a process's executable, or null when it cannot be queried.</summary>
+    public static string? QueryImagePath(uint pid)
+    {
+        var process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if (process == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        try
+        {
+            return QueryImagePath(process);
+        }
+        finally
+        {
+            CloseHandle(process);
+        }
+    }
+
+    public static string? QueryImagePath(IntPtr process)
+    {
+        var buffer = new char[1024];
+        var size = (uint)buffer.Length;
+        return QueryFullProcessImageName(process, 0, buffer, ref size) ? new string(buffer, 0, (int)size) : null;
+    }
 
     public static bool IsKeyDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 }

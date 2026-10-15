@@ -18,6 +18,7 @@ internal sealed class LowLevelHooks : IDisposable
     private readonly Action<Exception> _onError;
     private IntPtr _keyboardHook;
     private IntPtr _mouseHook;
+    private int _lastCallbackTick = Environment.TickCount;
 
     /// <param name="onKey">Returns true to swallow the key.</param>
     public LowLevelHooks(Func<KeyboardEvent, bool> onKey, Action onMouseDown, Action<Exception> onError)
@@ -41,6 +42,28 @@ internal sealed class LowLevelHooks : IDisposable
         }
 
         _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, module, 0);
+        _lastCallbackTick = Environment.TickCount;
+    }
+
+    /// <summary>
+    /// Windows unhooks a low-level hook without notice (after a timeout, sometimes after sleep). If the
+    /// session saw input that our hooks did not, they are gone.
+    /// </summary>
+    public bool LooksRemoved()
+    {
+        if (_keyboardHook == IntPtr.Zero)
+        {
+            return true;
+        }
+
+        var info = new LASTINPUTINFO { cbSize = (uint)Marshal.SizeOf<LASTINPUTINFO>() };
+        if (!GetLastInputInfo(ref info))
+        {
+            return false;
+        }
+
+        var missedFor = unchecked((int)(info.dwTime - (uint)_lastCallbackTick));
+        return missedFor > 1500;
     }
 
     public void Uninstall()
@@ -62,6 +85,7 @@ internal sealed class LowLevelHooks : IDisposable
 
     private IntPtr KeyboardCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
+        _lastCallbackTick = Environment.TickCount;
         if (nCode >= 0)
         {
             try
@@ -92,6 +116,7 @@ internal sealed class LowLevelHooks : IDisposable
 
     private IntPtr MouseCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
+        _lastCallbackTick = Environment.TickCount;
         if (nCode >= 0 && (int)wParam is WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_MBUTTONDOWN or WM_XBUTTONDOWN)
         {
             try

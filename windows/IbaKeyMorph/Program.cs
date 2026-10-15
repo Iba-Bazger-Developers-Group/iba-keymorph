@@ -5,8 +5,15 @@ namespace IbaKeyMorph;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--render-ui")
+        {
+            ApplicationConfiguration.Initialize();
+            UiSnapshots.Render(args[1]);
+            return;
+        }
+
         using var mutex = new Mutex(initiallyOwned: true, @"Local\IBA.KeyMorph.SingleInstance", out var isFirst);
         if (!isFirst)
         {

@@ -61,6 +61,19 @@ jobs:
           if ($app.HasExited) { Write-Error "IbaKeyMorph exited with code $($app.ExitCode)"; exit 1 }
           Stop-Process -Id $app.Id -Force
 
+      - name: UI snapshots
+        shell: pwsh
+        run: |
+          $out = Join-Path $PWD "ui-snapshots"
+          Start-Process "windows/publish/win-x64/IbaKeyMorph.exe" -ArgumentList "--render-ui", "`"$out`"" -Wait
+          Get-ChildItem $out
+          if (-not (Test-Path "$out/settings-1.png")) { Write-Error "UI snapshots were not produced"; exit 1 }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-snapshots-windows
+          path: ui-snapshots/*.png
+
       - name: Build installers (Inno Setup)
         shell: pwsh
         run: |
@@ -121,6 +134,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
+          pattern: IbaKeyMorph-*
           path: dist
           merge-multiple: true
 

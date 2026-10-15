@@ -34,9 +34,19 @@ internal sealed class LayoutService
 
     public void Switch(IKeyboardLayout layout, IntPtr foregroundWindow)
     {
-        if (layout is WindowsLayout target && foregroundWindow != IntPtr.Zero)
+        if (layout is not WindowsLayout target || foregroundWindow == IntPtr.Zero)
         {
-            PostMessage(foregroundWindow, WM_INPUTLANGCHANGEREQUEST, IntPtr.Zero, target.Handle);
+            return;
+        }
+
+        // The request is a "set", not a toggle, so asking both the top-level window and the control
+        // with keyboard focus is safe; some frameworks only honour one of them.
+        PostMessage(foregroundWindow, WM_INPUTLANGCHANGEREQUEST, IntPtr.Zero, target.Handle);
+        var thread = GetWindowThreadProcessId(foregroundWindow, out _);
+        var info = new GUITHREADINFO { cbSize = System.Runtime.InteropServices.Marshal.SizeOf<GUITHREADINFO>() };
+        if (GetGUIThreadInfo(thread, ref info) && info.hwndFocus != IntPtr.Zero && info.hwndFocus != foregroundWindow)
+        {
+            PostMessage(info.hwndFocus, WM_INPUTLANGCHANGEREQUEST, IntPtr.Zero, target.Handle);
         }
     }
 

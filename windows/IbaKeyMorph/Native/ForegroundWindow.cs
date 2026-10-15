@@ -20,6 +20,9 @@ internal sealed class ForegroundWindow
     /// </summary>
     public bool Unreachable { get; private set; }
 
+    /// <summary>Forces the next <see cref="Update"/> to report a change (e.g. after settings changed).</summary>
+    public void Invalidate() => Handle = IntPtr.Zero;
+
     /// <summary>Re-reads the foreground window; returns true if it changed.</summary>
     public bool Update()
     {
@@ -80,11 +83,8 @@ internal sealed class ForegroundWindow
 
         try
         {
-            var buffer = new char[1024];
-            var size = (uint)buffer.Length;
-            var name = QueryFullProcessImageName(process, 0, buffer, ref size)
-                ? Path.GetFileNameWithoutExtension(new string(buffer, 0, (int)size))
-                : string.Empty;
+            var path = QueryImagePath(process);
+            var name = path is null ? string.Empty : Path.GetFileNameWithoutExtension(path);
             return (name.ToLowerInvariant(), IsElevated(process));
         }
         finally

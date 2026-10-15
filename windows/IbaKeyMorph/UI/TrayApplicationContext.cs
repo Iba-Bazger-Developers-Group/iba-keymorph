@@ -14,6 +14,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly System.Windows.Forms.Timer _layoutTimer;
     private readonly Control _invoker = new();
     private SettingsForm? _settingsForm;
+    private AboutForm? _aboutForm;
     private string _shownLabel = string.Empty;
     private bool _shownActive;
 
@@ -25,8 +26,15 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _enabledItem = new ToolStripMenuItem("Включено", null, (_, _) => ToggleEnabled()) { CheckOnClick = false };
         _autoSwitchItem = new ToolStripMenuItem("Автоматическое переключение", null, (_, _) => ToggleAutoSwitch());
-        var menu = new ContextMenuStrip();
-        menu.Items.Add(new ToolStripMenuItem("IBA KeyMorph") { Enabled = false, Font = new Font(menu.Font, FontStyle.Bold) });
+        var menu = new ContextMenuStrip
+        {
+            Renderer = new DarkMenuRenderer(),
+            BackColor = Theme.Surface,
+            ForeColor = Theme.Text,
+            Font = Theme.Font(9.75f),
+            ShowImageMargin = true,
+        };
+        menu.Items.Add(new ToolStripMenuItem("IBA KeyMorph", Theme.Panda, (_, _) => ShowAbout()) { Font = Theme.Font(9.75f, FontStyle.Bold) });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_enabledItem);
         menu.Items.Add(_autoSwitchItem);
@@ -175,7 +183,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             return;
         }
 
-        _settingsForm = new SettingsForm(_settings);
+        _settingsForm = new SettingsForm(_settings, _service);
         _settingsForm.FormClosed += (_, _) =>
         {
             _service.ApplySettings();
@@ -185,20 +193,18 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settingsForm.Activate();
     }
 
-    private static void ShowAbout()
+    private void ShowAbout()
     {
-        var version = typeof(TrayApplicationContext).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
-        MessageBox.Show(
-            $"IBA KeyMorph {version}\n\n" +
-            "Автоматическое переключение раскладки клавиатуры EN ⇄ RU.\n\n" +
-            "Горячие клавиши:\n" +
-            "  Pause или Shift Shift — исправить/отменить последнее слово\n" +
-            "  Shift+Pause — исправить выделенный текст\n" +
-            "  Двойной щелчок по значку в трее — настройки\n\n" +
-            "© IBA",
-            "О программе IBA KeyMorph",
-            MessageBoxButtons.OK,
-            MessageBoxIcon.Information);
+        if (_aboutForm is { IsDisposed: false })
+        {
+            _aboutForm.Activate();
+            return;
+        }
+
+        _aboutForm = new AboutForm();
+        _aboutForm.FormClosed += (_, _) => _aboutForm = null;
+        _aboutForm.Show();
+        _aboutForm.Activate();
     }
 
     private void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)

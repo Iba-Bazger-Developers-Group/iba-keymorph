@@ -10,11 +10,14 @@
     <AssemblyName>IbaKeyMorph</AssemblyName>
     <RootNamespace>IbaKeyMorph</RootNamespace>
     <AssemblyTitle>IBA KeyMorph</AssemblyTitle>
+    <!-- Precompiled code: the first keystroke must not wait for the JIT (see KeyMorphService.WarmUp). -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\assets\keymorph.ico" LogicalName="IbaKeyMorph.Assets.keymorph.ico" />
     <EmbeddedResource Include="..\..\assets\switch.wav" LogicalName="IbaKeyMorph.Assets.switch.wav" />
+    <EmbeddedResource Include="..\..\assets\panda-logo.png" LogicalName="IbaKeyMorph.Assets.panda.png" />
   </ItemGroup>
 
   <ItemGroup>
