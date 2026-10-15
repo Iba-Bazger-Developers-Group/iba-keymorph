@@ -19,6 +19,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/IBAKeyMorph" "$APP/Contents/MacOS/IBAKeyMorph"
 sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD_NUMBER/" Resources/Info.plist > "$APP/Contents/Info.plist"
 cp ../data/en.txt ../data/ru.txt "$APP/Contents/Resources/"
+cp ../assets/panda-logo.png "$APP/Contents/Resources/"
 
 ICONSET="$BUILD_DIR/AppIcon.iconset"
 rm -rf "$ICONSET"

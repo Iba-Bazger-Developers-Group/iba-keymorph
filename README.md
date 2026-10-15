@@ -110,6 +110,17 @@ dotnet test IbaKeyMorph.Core.Tests && (cd ../macos && swift test)          # п�
 Тест `NoDictionaryWordLooksLikeAnotherDictionaryWordUnlessListed` сообщит, если новое слово совпадает
 по клавишам со словом другого языка (как `in` / `шт`). Такие пары не исправляются ни в одну сторону.
 
+## Оформление
+
+Иконки, логотип в окнах и картинки установщика собираются из одной панды скриптом:
+
+```bash
+python3 assets/make-assets.py      # нужен Pillow
+```
+
+Чтобы использовать фирменную панду IBA, положите её как `assets/panda-source.png` (квадрат от 512 px)
+и запустите скрипт: он обновит `keymorph.ico`, `icon-1024.png`, `panda-logo.png` и `assets/installer/*.bmp`.
+
 ## Сборка из исходников
 
 **Windows** (.NET 8 SDK):

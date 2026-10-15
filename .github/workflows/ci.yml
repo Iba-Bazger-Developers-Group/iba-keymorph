@@ -119,6 +119,18 @@ jobs:
           fi
           kill "$app"
 
+      - name: UI snapshots
+        timeout-minutes: 3
+        run: |
+          "macos/build/IBA KeyMorph.app/Contents/MacOS/IBAKeyMorph" --render-ui "$PWD/ui-snapshots"
+          ls -la ui-snapshots
+          test -f ui-snapshots/settings-1.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-snapshots-macos
+          path: ui-snapshots/*.png
+
       - uses: actions/upload-artifact@v4
         with:
           name: IbaKeyMorph-macos

@@ -71,6 +71,22 @@ enum AppResources {
         return try LanguageStore(directory: sourceData)
     }
 
+    /// The IBA panda logo (Contents/Resources/panda-logo.png, or assets/ in a source checkout).
+    static let panda: NSImage = {
+        if let url = Bundle.main.url(forResource: "panda-logo", withExtension: "png"),
+           let image = NSImage(contentsOf: url) {
+            return image
+        }
+
+        let source = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("assets/panda-logo.png")
+        return NSImage(contentsOf: source) ?? NSImage(named: NSImage.applicationIconName) ?? NSImage()
+    }()
+
     static var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }

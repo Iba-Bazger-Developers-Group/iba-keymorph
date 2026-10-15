@@ -23,10 +23,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let settings = Settings()
         let controller = KeyMorphController(settings: settings, languages: languages)
-        let settingsWindow = SettingsWindowController(settings: settings) { [weak controller] in
-            controller?.applySettings()
-            controller?.refreshExclusion()
-        }
+        let settingsWindow = SettingsWindowController(
+            settings: settings,
+            currentLayout: { [weak controller] in controller?.inputSources.current()?.shortName ?? "—" },
+            onChange: { [weak controller] in
+                controller?.applySettings()
+                controller?.refreshExclusion()
+            })
         let statusBar = StatusBarController(controller: controller) { [weak settingsWindow] in
             settingsWindow?.show()
         }

@@ -121,7 +121,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
             © IBA
             """
-        alert.icon = NSApp.applicationIconImage
+        alert.icon = AppResources.panda
         alert.runModal()
     }
 
