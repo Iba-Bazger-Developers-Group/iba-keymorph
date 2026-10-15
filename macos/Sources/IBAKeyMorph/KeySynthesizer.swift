@@ -2,6 +2,7 @@ import Carbon
 import CoreGraphics
 
 /// Builds synthetic keyboard events tagged with `KeyboardMonitor.marker`.
+@MainActor
 final class KeySynthesizer {
     private let source = CGEventSource(stateID: .privateState)
 
