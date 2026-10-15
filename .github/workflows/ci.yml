@@ -6,6 +6,14 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Опубликовать релиз этой версии, например 1.0.0 (пусто — только сборка)"
+        required: false
+        default: ""
+
+env:
+  RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.release_version || '' }}
 
 permissions:
   contents: read
@@ -24,7 +32,9 @@ jobs:
       - name: Version
         shell: bash
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"; else echo "VERSION=1.0.0" >> "$GITHUB_ENV"; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; elif [[ -n "$RELEASE_VERSION" ]]; then v="${RELEASE_VERSION#v}"; else v="1.0.0"; fi
+          [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Version must look like 1.2.3, got '$v'"; exit 1; }
+          echo "VERSION=$v" >> "$GITHUB_ENV"
 
       - name: Core tests
         run: dotnet test windows/IbaKeyMorph.Core.Tests -c Release --logger "console;verbosity=normal"
@@ -76,7 +86,9 @@ jobs:
 
       - name: Version
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"; else echo "VERSION=1.0.0" >> "$GITHUB_ENV"; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; elif [[ -n "$RELEASE_VERSION" ]]; then v="${RELEASE_VERSION#v}"; else v="1.0.0"; fi
+          [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Version must look like 1.2.3, got '$v'"; exit 1; }
+          echo "VERSION=$v" >> "$GITHUB_ENV"
 
       - name: Core tests
         run: swift test --package-path macos
@@ -101,7 +113,7 @@ jobs:
 
   release:
     name: GitHub release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_version != '')
     needs: [windows, macos]
     runs-on: ubuntu-latest
     permissions:
@@ -112,7 +124,27 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Release version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; else v="${RELEASE_VERSION#v}"; fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: IBA KeyMorph ${{ env.VERSION }}
           files: dist/*
           generate_release_notes: true
+          body: |
+            ## Что скачать
+
+            **Windows 10/11**
+            - `IbaKeyMorph-${{ env.VERSION }}-x64-setup.exe` — установщик (рекомендуется, права администратора не нужны)
+            - `IbaKeyMorph-${{ env.VERSION }}-win-x64-portable.exe` — портативная версия одним файлом
+            - Для ноутбуков на ARM — файлы `arm64`
+
+            **macOS 13+**
+            - `IBA-KeyMorph-${{ env.VERSION }}-macOS.zip` — распакуйте, перенесите в «Программы», первый запуск — правый щелчок → «Открыть», затем разрешите доступ в «Универсальном доступе»
+
+            Горячие клавиши: `Pause` / двойной `Shift` — исправить или отменить последнее слово; `Shift+Pause` / двойной `⌥` — исправить выделенный текст.
