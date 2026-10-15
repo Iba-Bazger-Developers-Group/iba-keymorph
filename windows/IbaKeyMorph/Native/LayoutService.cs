@@ -8,14 +8,14 @@ internal sealed class LayoutService
 {
     private readonly Dictionary<IntPtr, WindowsLayout> _known = new();
     private IReadOnlyList<WindowsLayout> _installed = Array.Empty<WindowsLayout>();
-    private long _refreshedAt = long.MinValue;
+    private long? _refreshedAt;
 
     public IReadOnlyList<WindowsLayout> Installed
     {
         get
         {
             var now = Environment.TickCount64;
-            if (now - _refreshedAt > 2000)
+            if (_refreshedAt is not { } last || now - last > 2000)
             {
                 Refresh();
                 _refreshedAt = now;

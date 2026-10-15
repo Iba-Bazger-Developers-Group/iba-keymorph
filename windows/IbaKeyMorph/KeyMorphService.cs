@@ -26,7 +26,7 @@ internal sealed class KeyMorphService : IDisposable
     private readonly TypingEngine _engine;
     private readonly SoundPlayer? _sound;
     private readonly System.Windows.Forms.Timer _watchdog = new() { Interval = 2000 };
-    private long _lastWatchdogLog = long.MinValue;
+    private long? _lastWatchdogLog;
     private bool _capsOn;
     private bool _capsDown;
     private bool _excluded;
@@ -177,7 +177,7 @@ internal sealed class KeyMorphService : IDisposable
             _engine.Reset();
             _hooks.Install();
             var now = Environment.TickCount64;
-            if (now - _lastWatchdogLog > 600_000)
+            if (_lastWatchdogLog is not { } last || now - last > 600_000)
             {
                 _lastWatchdogLog = now;
                 Log.Info("Keyboard hook stopped receiving input (removed by Windows?); reinstalled");

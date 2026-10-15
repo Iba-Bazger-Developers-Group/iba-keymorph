@@ -80,7 +80,12 @@ internal static class Program
     {
         Reset(_english);
         TypeKeys("ghbdtn ", _english);
-        WaitFor(() => _box.Text == "привет ", 4000);
+        if (!WaitFor(() => _box.Text == "привет ", 4000))
+        {
+            Console.WriteLine($"FAIL Pause undoes the correction: nothing was corrected first (\"{_box.Text}\")");
+            return 1;
+        }
+
         Press(0, VK_PAUSE);
         var ok = WaitFor(() => _box.Text == "ghbdtn " && CurrentLayout() == _english, 4000);
         Console.WriteLine($"{(ok ? "PASS" : "FAIL")} Pause undoes the correction: \"{_box.Text}\" (expected \"ghbdtn \"), layout {CurrentLayout():X}");
