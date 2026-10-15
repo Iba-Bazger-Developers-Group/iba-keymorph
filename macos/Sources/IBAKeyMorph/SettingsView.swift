@@ -46,6 +46,29 @@ private struct IBAButtonBody: View {
     }
 }
 
+/// IBA switch: green when on, independent of window focus and system accent colour.
+struct IBASwitchStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack {
+            configuration.label
+            Spacer(minLength: 16)
+            ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                Capsule()
+                    .fill(configuration.isOn ? IBA.accent : IBA.surface)
+                    .overlay(Capsule().stroke(configuration.isOn ? IBA.accent : IBA.border, lineWidth: 1))
+                    .frame(width: 40, height: 22)
+                Circle()
+                    .fill(configuration.isOn ? Color.white : IBA.muted)
+                    .frame(width: 16, height: 16)
+                    .padding(.horizontal, 3)
+            }
+            .animation(.easeOut(duration: 0.15), value: configuration.isOn)
+            .onTapGesture { configuration.isOn.toggle() }
+        }
+        .contentShape(Rectangle())
+    }
+}
+
 /// Name and icon of an app by bundle id, whether or not it is running.
 enum AppInfo {
     private static let knownNames = [
@@ -273,13 +296,8 @@ struct SettingsView: View {
 
     /// Label on the left, switch aligned to the right edge.
     private func switchRow(_ title: String, isOn: Binding<Bool>) -> some View {
-        HStack {
-            Text(title)
-            Spacer(minLength: 16)
-            Toggle(title, isOn: isOn)
-                .toggleStyle(.switch)
-                .labelsHidden()
-        }
+        Toggle(title, isOn: isOn)
+            .toggleStyle(IBASwitchStyle())
     }
 
     private func saveExceptions() {
