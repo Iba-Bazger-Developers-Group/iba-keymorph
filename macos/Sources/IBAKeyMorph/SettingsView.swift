@@ -183,8 +183,7 @@ struct SettingsView: View {
             toggle("Двойной ⇧ Shift — исправить или отменить последнее слово", \.doubleShiftHotkey)
             toggle("Двойной ⌥ Option — исправить выделенный текст", \.doubleOptionHotkey)
             toggle("Звук при переключении раскладки", \.playSound)
-            Toggle("Запускать IBA KeyMorph при входе в систему", isOn: $launchAtLogin)
-                .toggleStyle(.switch)
+            switchRow("Запускать IBA KeyMorph при входе в систему", isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { enabled in
                     do {
                         try LoginItem.set(enabled)
@@ -264,13 +263,23 @@ struct SettingsView: View {
     }
 
     private func toggle(_ title: String, _ keyPath: ReferenceWritableKeyPath<Settings, Bool>) -> some View {
-        Toggle(title, isOn: Binding(
+        switchRow(title, isOn: Binding(
             get: { settings[keyPath: keyPath] },
             set: { value in
                 settings[keyPath: keyPath] = value
                 onChange()
             }))
-            .toggleStyle(.switch)
+    }
+
+    /// Label on the left, switch aligned to the right edge.
+    private func switchRow(_ title: String, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(title)
+            Spacer(minLength: 16)
+            Toggle(title, isOn: isOn)
+                .toggleStyle(.switch)
+                .labelsHidden()
+        }
     }
 
     private func saveExceptions() {
