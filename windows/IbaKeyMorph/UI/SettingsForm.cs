@@ -26,16 +26,7 @@ internal sealed class SettingsForm : Form
         Font = new Font("Consolas", 10.5f),
     };
 
-    private readonly ListView _apps = new()
-    {
-        View = View.Details,
-        FullRowSelect = true,
-        HeaderStyle = ColumnHeaderStyle.None,
-        BorderStyle = BorderStyle.None,
-        MultiSelect = true,
-    };
-
-    private readonly ImageList _appIcons = new() { ColorDepth = ColorDepth.Depth32Bit, ImageSize = new Size(20, 20) };
+    private readonly AppListView _apps = new(checkBoxes: false) { MultiSelect = true };
     private readonly SortedDictionary<string, AppEntry> _excluded = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<(IbaButton Tab, Control Page)> _pages = new();
     private readonly IbaButton _remove = new("Удалить") { Width = 110, Enabled = false };
@@ -78,16 +69,6 @@ internal sealed class SettingsForm : Form
 
         LoadValues();
         ShowPage(0);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _appIcons.Dispose();
-        }
-
-        base.Dispose(disposing);
     }
 
     private Control Header()
@@ -210,7 +191,7 @@ internal sealed class SettingsForm : Form
         };
         foreach (var toggle in new[] { _autoSwitch, _previousWord, _capsLock, _pause, _doubleShift, _sound, _autostart })
         {
-            toggle.AutoSize = true;
+            toggle.Size = new Size(ContentWidth - 8, toggle.GetPreferredSize(Size.Empty).Height);
             panel.Controls.Add(toggle);
         }
 
@@ -245,10 +226,6 @@ internal sealed class SettingsForm : Form
             "администратора, KeyMorph не вмешивается.",
             ContentWidth), 0, 0);
 
-        _apps.SmallImageList = _appIcons;
-        _apps.Columns.Add("Программа", 380);
-        _apps.Columns.Add("Процесс", 180);
-        Theme.DarkControl(_apps);
         _apps.SelectedIndexChanged += (_, _) => _remove.Enabled = _apps.SelectedItems.Count > 0;
         _apps.KeyDown += (_, e) =>
         {
@@ -256,11 +233,6 @@ internal sealed class SettingsForm : Form
             {
                 RemoveSelectedApps();
             }
-        };
-        _apps.Resize += (_, _) =>
-        {
-            _apps.Columns[1].Width = 180;
-            _apps.Columns[0].Width = Math.Max(150, _apps.ClientSize.Width - 184);
         };
         var box = Theme.Boxed(_apps, 6);
         box.Dock = DockStyle.Fill;
@@ -292,7 +264,7 @@ internal sealed class SettingsForm : Form
         var footer = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, Dock = DockStyle.Fill, BackColor = Theme.Background };
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        var hint = Theme.MutedText("Pause / Shift Shift — последнее слово · Shift+Pause — выделенный текст", 330);
+        var hint = Theme.MutedText("Pause, Shift Shift — слово · Shift+Pause — выделение", 360);
         hint.Anchor = AnchorStyles.Left;
         footer.Controls.Add(hint, 0, 0);
 
@@ -349,21 +321,8 @@ internal sealed class SettingsForm : Form
         _apps.Items.Clear();
         foreach (var app in _excluded.Values.OrderBy(a => a.DisplayName, StringComparer.CurrentCultureIgnoreCase))
         {
-            if (!_appIcons.Images.ContainsKey(app.ProcessName))
-            {
-                using var icon = AppCatalog.IconFor(app.Path);
-                _appIcons.Images.Add(app.ProcessName, icon.ToBitmap());
-            }
-
-            var item = new ListViewItem(app.DisplayName, app.ProcessName)
-            {
-                Tag = app,
-                UseItemStyleForSubItems = false,
-                ForeColor = Theme.Text,
-                BackColor = Theme.Surface,
-            };
-            item.SubItems.Add(app.ProcessName + ".exe", Theme.Muted, Theme.Surface, _apps.Font);
-            _apps.Items.Add(item);
+            _apps.AddIcon(app.ProcessName, app.Path);
+            _apps.Items.Add(new ListViewItem(app.DisplayName, app.ProcessName) { Tag = app });
         }
 
         _apps.EndUpdate();

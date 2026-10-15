@@ -6,17 +6,7 @@ internal sealed class AppPickerForm : Form
     private readonly HashSet<string> _alreadyExcluded;
     private readonly TextBox _search = new() { BorderStyle = BorderStyle.None, PlaceholderText = "Поиск программы…" };
     private readonly ToggleRow _background = new("Показать фоновые процессы");
-    private readonly ListView _list = new()
-    {
-        View = View.Details,
-        CheckBoxes = true,
-        FullRowSelect = true,
-        HeaderStyle = ColumnHeaderStyle.None,
-        BorderStyle = BorderStyle.None,
-        MultiSelect = false,
-    };
-
-    private readonly ImageList _icons = new() { ColorDepth = ColorDepth.Depth32Bit };
+    private readonly AppListView _list = new(checkBoxes: true) { MultiSelect = false };
     private readonly HashSet<string> _checked = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<AppEntry> _apps = Array.Empty<AppEntry>();
 
@@ -46,11 +36,6 @@ internal sealed class AppPickerForm : Form
         };
         var subtitle = Theme.MutedText("Отметьте программы. Сейчас показаны открытые окна.", 480);
 
-        _icons.ImageSize = new Size(20, 20);
-        _list.SmallImageList = _icons;
-        _list.Columns.Add("Программа", 300);
-        _list.Columns.Add("Процесс", 160);
-        Theme.DarkControl(_list);
         _list.ItemChecked += (_, e) =>
         {
             if (e.Item.Tag is AppEntry app)
@@ -67,14 +52,14 @@ internal sealed class AppPickerForm : Form
 
             UpdateAddButton();
         };
-        _list.ItemActivate += (_, _) =>
+        _list.MouseClick += (_, e) =>
         {
-            if (_list.FocusedItem is { } item)
+            // The check box itself is toggled natively; a click anywhere else on the row toggles too.
+            if (e.X > 28 && _list.GetItemAt(e.X, e.Y) is { } item)
             {
                 item.Checked = !item.Checked;
             }
         };
-        _list.Resize += (_, _) => FitColumns();
 
         Theme.DarkControl(_search);
         _search.TextChanged += (_, _) => Fill();
@@ -128,16 +113,6 @@ internal sealed class AppPickerForm : Form
     public IReadOnlyList<AppEntry> Selected =>
         _apps.Where(a => _checked.Contains(a.ProcessName)).ToList();
 
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _icons.Dispose();
-        }
-
-        base.Dispose(disposing);
-    }
-
     private void Reload()
     {
         Cursor = Cursors.WaitCursor;
@@ -146,11 +121,9 @@ internal sealed class AppPickerForm : Form
             _apps = AppCatalog.Running(_background.Checked)
                 .Where(a => !_alreadyExcluded.Contains(a.ProcessName))
                 .ToList();
-            _icons.Images.Clear();
             foreach (var app in _apps)
             {
-                using var icon = AppCatalog.IconFor(app.Path);
-                _icons.Images.Add(app.ProcessName, icon.ToBitmap());
+                _list.AddIcon(app.ProcessName, app.Path);
             }
 
             Fill();
@@ -175,31 +148,15 @@ internal sealed class AppPickerForm : Form
                 continue;
             }
 
-            var item = new ListViewItem(app.DisplayName, app.ProcessName)
+            _list.Items.Add(new ListViewItem(app.DisplayName, app.ProcessName)
             {
                 Tag = app,
                 Checked = _checked.Contains(app.ProcessName),
-                UseItemStyleForSubItems = false,
-                ForeColor = Theme.Text,
-                BackColor = Theme.Surface,
-            };
-            item.SubItems.Add(app.ProcessName + ".exe", Theme.Muted, Theme.Surface, _list.Font);
-            _list.Items.Add(item);
+            });
         }
 
         _list.EndUpdate();
-        FitColumns();
         UpdateAddButton();
-    }
-
-    private void FitColumns()
-    {
-        if (_list.Columns.Count == 2)
-        {
-            var width = _list.ClientSize.Width;
-            _list.Columns[1].Width = 150;
-            _list.Columns[0].Width = Math.Max(120, width - 150 - 4);
-        }
     }
 
     private void UpdateAddButton()

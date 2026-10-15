@@ -93,7 +93,7 @@ internal sealed class IbaButton : Button
     }
 }
 
-/// <summary>A switch with a label to its right — the IBA replacement for check boxes.</summary>
+/// <summary>A label with a switch at the right edge — the IBA replacement for check boxes.</summary>
 internal sealed class ToggleRow : Control
 {
     private const int SwitchWidth = 40;
@@ -175,7 +175,7 @@ internal sealed class ToggleRow : Control
         g.Clear(BackColor);
 
         var top = (Height - SwitchHeight) / 2f;
-        var track = new RectangleF(1, top, SwitchWidth, SwitchHeight);
+        var track = new RectangleF(Width - SwitchWidth - 2, top, SwitchWidth, SwitchHeight);
         using (var path = Theme.RoundedRectangle(track, SwitchHeight / 2f))
         using (var brush = new SolidBrush(_checked ? Theme.Accent : Theme.Surface))
         using (var pen = new Pen(Focused ? Theme.Glow : _checked ? Theme.Accent : Theme.Border, Focused ? 1.5f : 1f))
@@ -191,8 +191,113 @@ internal sealed class ToggleRow : Control
             g.FillEllipse(brush, x, top + 4, knob, knob);
         }
 
-        var textRect = new Rectangle(SwitchWidth + 12, 0, Width - SwitchWidth - 12, Height);
+        var textRect = new Rectangle(0, 0, Width - SwitchWidth - 14, Height);
         TextRenderer.DrawText(g, Text, Font, textRect, ForeColor,
             TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.WordBreak);
+    }
+}
+
+/// <summary>
+/// Owner-drawn program list: icon, name, process name on the right, IBA selection colours and
+/// optional check boxes. Items carry an <see cref="AppEntry"/> in <see cref="ListViewItem.Tag"/>.
+/// </summary>
+internal sealed class AppListView : ListView
+{
+    private const int CheckSize = 16;
+
+    public AppListView(bool checkBoxes)
+    {
+        View = View.Details;
+        CheckBoxes = checkBoxes;
+        FullRowSelect = true;
+        HeaderStyle = ColumnHeaderStyle.None;
+        BorderStyle = BorderStyle.None;
+        OwnerDraw = true;
+        Font = Theme.Font(9.75f);
+        SmallImageList = new ImageList { ColorDepth = ColorDepth.Depth32Bit, ImageSize = new Size(28, 28) };
+        Columns.Add(string.Empty);
+        Theme.DarkControl(this);
+        SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+        DrawItem += (_, e) => PaintItem(e);
+        DrawSubItem += (_, _) => { };
+        Resize += (_, _) => Columns[0].Width = Math.Max(100, ClientSize.Width);
+    }
+
+    public ImageList Icons => SmallImageList!;
+
+    public void AddIcon(string key, string? path)
+    {
+        if (Icons.Images.ContainsKey(key))
+        {
+            return;
+        }
+
+        using var icon = AppCatalog.IconFor(path);
+        Icons.Images.Add(key, icon.ToBitmap());
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            SmallImageList?.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private void PaintItem(DrawListViewItemEventArgs e)
+    {
+        var g = e.Graphics;
+        var bounds = new Rectangle(0, e.Bounds.Y, ClientSize.Width, e.Bounds.Height);
+        var selected = e.Item.Selected;
+        using (var background = new SolidBrush(selected ? Theme.Accent : Theme.Surface))
+        {
+            g.FillRectangle(background, bounds);
+        }
+
+        var x = bounds.X + 6;
+        if (CheckBoxes)
+        {
+            var box = new Rectangle(x, bounds.Y + (bounds.Height - CheckSize) / 2, CheckSize, CheckSize);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (var path = Theme.RoundedRectangle(box, 4))
+            using (var fill = new SolidBrush(e.Item.Checked ? Theme.Accent : Theme.Background))
+            using (var border = new Pen(e.Item.Checked ? Theme.Glow : Theme.Border))
+            {
+                g.FillPath(fill, path);
+                g.DrawPath(border, path);
+            }
+
+            if (e.Item.Checked)
+            {
+                using var tick = new Pen(Color.White, 2f);
+                g.DrawLines(tick, new[]
+                {
+                    new PointF(box.X + 3.5f, box.Y + 8.5f),
+                    new PointF(box.X + 6.5f, box.Y + 11.5f),
+                    new PointF(box.X + 12.5f, box.Y + 4.5f),
+                });
+            }
+
+            g.SmoothingMode = SmoothingMode.Default;
+            x += CheckSize + 10;
+        }
+
+        var key = e.Item.ImageKey;
+        if (!string.IsNullOrEmpty(key) && Icons.Images.ContainsKey(key))
+        {
+            var size = Math.Min(22, bounds.Height - 6);
+            g.DrawImage(Icons.Images[key]!, new Rectangle(x, bounds.Y + (bounds.Height - size) / 2, size, size));
+            x += size + 10;
+        }
+
+        var secondary = e.Item.Tag is AppEntry app ? app.ProcessName + ".exe" : string.Empty;
+        var secondaryWidth = TextRenderer.MeasureText(secondary, Font).Width;
+        var right = bounds.Right - 10;
+        TextRenderer.DrawText(g, secondary, Font, new Rectangle(right - secondaryWidth, bounds.Y, secondaryWidth, bounds.Height),
+            selected ? Theme.Text : Theme.Muted, TextFormatFlags.VerticalCenter | TextFormatFlags.Right | TextFormatFlags.SingleLine);
+        TextRenderer.DrawText(g, e.Item.Text, Font, new Rectangle(x, bounds.Y, Math.Max(0, right - secondaryWidth - 12 - x), bounds.Height),
+            Theme.Text, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
     }
 }
