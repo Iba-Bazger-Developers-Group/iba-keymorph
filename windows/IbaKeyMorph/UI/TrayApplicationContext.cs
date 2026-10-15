@@ -49,7 +49,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             Visible = true,
         };
         _tray.DoubleClick += (_, _) => ShowSettings();
-        _service.Start();
+        StartService(restart: false);
 
         _layoutTimer = new System.Windows.Forms.Timer { Interval = 300 };
         _layoutTimer.Tick += (_, _) => RefreshTrayIcon();
@@ -87,6 +87,31 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         base.Dispose(disposing);
+    }
+
+    private void StartService(bool restart)
+    {
+        try
+        {
+            if (restart)
+            {
+                _service.Restart();
+            }
+            else
+            {
+                _service.Start();
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Keep running in the tray; resume/unlock retries the hooks.
+            Log.Error("Keyboard hooks could not be installed", ex);
+            _tray.ShowBalloonTip(
+                5000,
+                "IBA KeyMorph",
+                "Не удалось подключиться к клавиатуре. Перезапустите программу или войдите в систему заново.",
+                ToolTipIcon.Warning);
+        }
     }
 
     private void RefreshTrayIcon()
@@ -180,7 +205,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (e.Mode == PowerModes.Resume)
         {
-            _invoker.BeginInvoke(_service.Restart);
+            _invoker.BeginInvoke(() => StartService(restart: true));
         }
     }
 
@@ -188,7 +213,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (e.Reason is SessionSwitchReason.SessionUnlock or SessionSwitchReason.ConsoleConnect or SessionSwitchReason.RemoteConnect)
         {
-            _invoker.BeginInvoke(_service.Restart);
+            _invoker.BeginInvoke(() => StartService(restart: true));
         }
     }
 }

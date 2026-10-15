@@ -41,6 +41,16 @@ jobs:
             Copy-Item "windows/publish/$rid/IbaKeyMorph.exe" "windows/publish/IbaKeyMorph-$env:VERSION-$rid-portable.exe"
           }
 
+      - name: Smoke test (app starts and stays up)
+        shell: pwsh
+        run: |
+          $app = Start-Process "windows/publish/win-x64/IbaKeyMorph.exe" -PassThru
+          Start-Sleep -Seconds 10
+          $log = Join-Path $env:APPDATA "IBA\KeyMorph\keymorph.log"
+          if (Test-Path $log) { Get-Content $log }
+          if ($app.HasExited) { Write-Error "IbaKeyMorph exited with code $($app.ExitCode)"; exit 1 }
+          Stop-Process -Id $app.Id -Force
+
       - name: Build installers (Inno Setup)
         shell: pwsh
         run: |
@@ -73,6 +83,16 @@ jobs:
 
       - name: Build app bundle
         run: BUILD_NUMBER="$GITHUB_RUN_NUMBER" ./macos/build-app.sh
+
+      - name: Smoke test (app starts and stays up)
+        run: |
+          "macos/build/IBA KeyMorph.app/Contents/MacOS/IBAKeyMorph" &
+          app=$!
+          sleep 10
+          if ! kill -0 "$app" 2>/dev/null; then
+            wait "$app"; echo "::error::IBAKeyMorph exited with code $?"; exit 1
+          fi
+          kill "$app"
 
       - uses: actions/upload-artifact@v4
         with:

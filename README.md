@@ -1,6 +1,10 @@
 # IBA KeyMorph
 
+[![CI](https://github.com/Iba-Bazger-Developers-Group/iba-keymorph/actions/workflows/ci.yml/badge.svg)](https://github.com/Iba-Bazger-Developers-Group/iba-keymorph/actions/workflows/ci.yml)
+
 Автоматический переключатель раскладки клавиатуры для **Windows** и **macOS**, аналог Punto Switcher.
+
+**[⬇ Скачать последнюю версию](https://github.com/Iba-Bazger-Developers-Group/iba-keymorph/releases/latest)**
 
 Набрали `ghbdtn` вместо «привет» или `руддщ` вместо «hello»? IBA KeyMorph заметит это в момент
 нажатия пробела, сотрёт слово, напечатает его в правильной раскладке и переключит раскладку, чтобы
