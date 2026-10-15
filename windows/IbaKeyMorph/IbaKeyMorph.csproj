@@ -10,7 +10,6 @@
     <AssemblyName>IbaKeyMorph</AssemblyName>
     <RootNamespace>IbaKeyMorph</RootNamespace>
     <AssemblyTitle>IBA KeyMorph</AssemblyTitle>
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
   <ItemGroup>
