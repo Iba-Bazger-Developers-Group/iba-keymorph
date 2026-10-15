@@ -132,13 +132,15 @@ internal sealed class SettingsForm : Form
         var installed = _service.Layouts.Installed;
         var supported = installed.Where(l => l.Language is not null).Select(l => l.ShortName).Distinct().ToList();
         var version = typeof(SettingsForm).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
-        var detail = supported.Count >= 2
+        var detail = (supported.Count >= 2
             ? $"Версия {version} · раскладки: {string.Join(", ", installed.Select(l => l.ShortName).Distinct())}"
-            : $"Версия {version} · для автоисправления нужны раскладки EN и RU";
+            : $"Версия {version} · для автоисправления нужны раскладки EN и RU") +
+            $" · нажатий перехвачено: {_service.KeysSeen} · исправлено слов: {_service.Corrections}";
         card.Controls.Add(new Label
         {
             Text = detail,
             AutoSize = true,
+            MaximumSize = new Size(ContentWidth - 40, 0),
             ForeColor = supported.Count >= 2 ? Theme.Muted : Theme.Caption,
             Font = Theme.Font(9.5f),
         });

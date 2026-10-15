@@ -14,6 +14,17 @@ internal static class Log
 
     public static void Info(string message) => Write("INFO", message);
 
+    /// <summary>Opens the log in Notepad (creating it if needed), so users can find and send it.</summary>
+    public static void Open()
+    {
+        if (!File.Exists(FilePath))
+        {
+            Info("Log opened from the tray menu");
+        }
+
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("notepad.exe", $"\"{FilePath}\"") { UseShellExecute = true });
+    }
+
     private static void Write(string level, string message)
     {
         try

@@ -46,6 +46,15 @@ internal sealed class KeyMorphService : IDisposable
 
     public LayoutService Layouts => _layouts;
 
+    /// <summary>Key presses seen by the hook since start (shown in settings to prove the hook works).</summary>
+    public int KeysSeen { get; private set; }
+
+    public int Corrections { get; private set; }
+
+    private static readonly bool DiagnosticsFromEnvironment = Environment.GetEnvironmentVariable("IBA_KEYMORPH_DIAGNOSTICS") == "1";
+
+    private bool Diagnostics => _settings.DiagnosticLog || DiagnosticsFromEnvironment;
+
     public void Start()
     {
         WarmUp();
@@ -145,6 +154,9 @@ internal sealed class KeyMorphService : IDisposable
         _ = _layouts.Current(GetForegroundWindow());
         _ = new InputSender().Backspace(1).Text("x");
 
+        var version = typeof(KeyMorphService).Assembly.GetName().Version?.ToString(3);
+        Log.Info($"IBA KeyMorph {version} on {Environment.OSVersion.VersionString}, " +
+                 $"elevated: {Environment.IsPrivilegedProcess}, diagnostics: {Diagnostics}");
         Log.Info($"Started in {timer.ElapsedMilliseconds} ms; layouts: " +
                  string.Join(", ", installed.Select(l => $"{l.ShortName} {l.Id} {(l.Language is null ? "(no dictionary)" : l.Language.Code)}")));
         if (installed.Count(l => l.Language is not null) < 2)
@@ -179,15 +191,10 @@ internal sealed class KeyMorphService : IDisposable
 
     private bool OnKey(KeyboardEvent e)
     {
-        if (e.IsInjected)
+        // Only our own corrections are skipped. Keys injected by other software (key remappers,
+        // vendor keyboard tools, remote desktop) are real typing and must be tracked.
+        if (e.IsInjected && e.ExtraInfo == InputSender.Marker)
         {
-            if (e.ExtraInfo != InputSender.Marker)
-            {
-                // Another program is typing (remote control, macros): our picture of the text is stale.
-                _engine.Reset();
-                TrackCapsLock(e);
-            }
-
             return false;
         }
 
@@ -196,6 +203,7 @@ internal sealed class KeyMorphService : IDisposable
             return OnKeyUp(e);
         }
 
+        KeysSeen++;
         TrackCapsLock(e);
         if (!_settings.Enabled || _busy)
         {
@@ -205,7 +213,14 @@ internal sealed class KeyMorphService : IDisposable
         if (_foreground.Update())
         {
             _engine.Reset();
-            _excluded = _foreground.Unreachable || _settings.ExcludedApps.Contains(_foreground.ProcessName);
+            var listed = _settings.ExcludedApps.Contains(_foreground.ProcessName);
+            _excluded = _foreground.Unreachable || listed;
+            if (Diagnostics)
+            {
+                Log.Info($"Window: {_foreground.ProcessName}" +
+                         (_foreground.Unreachable ? " — elevated or protected, KeyMorph cannot type there" : string.Empty) +
+                         (listed ? " — excluded in settings" : string.Empty));
+            }
         }
 
         var vk = e.VirtualKey;
@@ -318,7 +333,15 @@ internal sealed class KeyMorphService : IDisposable
 
     private bool OnBoundary(BoundaryKind kind, KeyboardEvent e)
     {
+        var word = Diagnostics ? _engine.CurrentWord : string.Empty;
         var result = _engine.OnBoundary(kind, _layouts.Installed);
+        if (Diagnostics && word.Length > 0)
+        {
+            var layout = _layouts.Current(_foreground.Handle);
+            Log.Info($"Word \"{word}\" in {layout} → " +
+                     (result.Swallow ? string.Join("; ", result.Actions) : "keep"));
+        }
+
         if (!result.Swallow)
         {
             return false;
@@ -337,6 +360,11 @@ internal sealed class KeyMorphService : IDisposable
 
     private void Execute(EngineResult result, KeyboardEvent? boundary)
     {
+        if (result.ChangesText)
+        {
+            Corrections++;
+        }
+
         var input = new InputSender();
         var switched = false;
         foreach (var action in result.Actions)

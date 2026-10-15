@@ -63,6 +63,18 @@ jobs:
           if ($app.HasExited) { Write-Error "IbaKeyMorph exited with code $($app.ExitCode)"; exit 1 }
           Stop-Process -Id $app.Id -Force
 
+      - name: End-to-end typing test (real keyboard input on the Windows desktop)
+        shell: pwsh
+        timeout-minutes: 5
+        env:
+          IBA_KEYMORPH_DIAGNOSTICS: "1"
+        run: |
+          dotnet run --project windows/IbaKeyMorph.E2E -c Release -- "$PWD/windows/publish/win-x64/IbaKeyMorph.exe"
+          $code = $LASTEXITCODE
+          $log = Join-Path $env:APPDATA "IBA\KeyMorph\keymorph.log"
+          if (Test-Path $log) { Write-Host "---- keymorph.log ----"; Get-Content $log }
+          exit $code
+
       - name: UI snapshots
         shell: pwsh
         run: |

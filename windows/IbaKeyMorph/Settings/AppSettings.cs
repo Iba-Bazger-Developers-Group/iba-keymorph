@@ -29,6 +29,9 @@ internal sealed class AppSettings
 
     public bool FirstRun { get; set; } = true;
 
+    /// <summary>Writes every checked word and decision to the log (off by default: it records typed text).</summary>
+    public bool DiagnosticLog { get; set; }
+
     /// <summary>Words that are never corrected (normalised: lower case, ё → е).</summary>
     public SortedSet<string> Exceptions { get; set; } = new(StringComparer.Ordinal);
 

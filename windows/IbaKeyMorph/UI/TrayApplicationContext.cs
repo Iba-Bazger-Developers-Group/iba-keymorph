@@ -11,6 +11,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly NotifyIcon _tray;
     private readonly ToolStripMenuItem _enabledItem;
     private readonly ToolStripMenuItem _autoSwitchItem;
+    private readonly ToolStripMenuItem _diagnosticsItem;
     private readonly System.Windows.Forms.Timer _layoutTimer;
     private readonly Control _invoker = new();
     private SettingsForm? _settingsForm;
@@ -26,6 +27,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _enabledItem = new ToolStripMenuItem("Включено", null, (_, _) => ToggleEnabled()) { CheckOnClick = false };
         _autoSwitchItem = new ToolStripMenuItem("Автоматическое переключение", null, (_, _) => ToggleAutoSwitch());
+        _diagnosticsItem = new ToolStripMenuItem("Подробная диагностика (пишет слова в журнал)", null, (_, _) => ToggleDiagnostics());
         var menu = new ContextMenuStrip
         {
             Renderer = new DarkMenuRenderer(),
@@ -45,6 +47,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Настройки…", null, (_, _) => ShowSettings()));
         menu.Items.Add(new ToolStripMenuItem("О программе", null, (_, _) => ShowAbout()));
+        menu.Items.Add(new ToolStripMenuItem("Открыть журнал", null, (_, _) => Log.Open()));
+        menu.Items.Add(_diagnosticsItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Выход", null, (_, _) => ExitThread()));
         menu.Opening += (_, _) => RefreshMenu();
@@ -151,6 +155,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _enabledItem.Checked = _settings.Enabled;
         _autoSwitchItem.Checked = _settings.AutoSwitch;
         _autoSwitchItem.Enabled = _settings.Enabled;
+        _diagnosticsItem.Checked = _settings.DiagnosticLog;
     }
 
     private void ToggleEnabled()
@@ -159,6 +164,14 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settings.Save();
         _service.ApplySettings();
         RefreshTrayIcon();
+    }
+
+    private void ToggleDiagnostics()
+    {
+        _settings.DiagnosticLog = !_settings.DiagnosticLog;
+        _settings.Save();
+        _service.ApplySettings();
+        Log.Info($"Diagnostics {(_settings.DiagnosticLog ? "on" : "off")}");
     }
 
     private void ToggleAutoSwitch()
