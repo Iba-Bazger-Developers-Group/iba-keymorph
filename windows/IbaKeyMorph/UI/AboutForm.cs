@@ -11,13 +11,13 @@ internal sealed class AboutForm : Form
         var version = typeof(AboutForm).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
         Text = "О программе IBA KeyMorph";
         Icon = TrayIcons.AppIcon;
-        Font = Theme.Font(9.75f);
+        Font = Theme.Font(9.5f);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(460, 470);
+        ClientSize = new Size(520, 520);
         Padding = new Padding(28, 24, 28, 24);
         Theme.ApplyChrome(this);
 
@@ -26,25 +26,29 @@ internal sealed class AboutForm : Form
         {
             Image = Theme.Panda,
             SizeMode = PictureBoxSizeMode.Zoom,
-            Size = new Size(112, 112),
+            Size = new Size(120, 120),
             Anchor = AnchorStyles.None,
             Margin = new Padding(0, 0, 0, 12),
         });
-        layout.Controls.Add(Centered(new Label
+        var title = new FlowLayoutPanel { AutoSize = true, WrapContents = false, BackColor = Theme.Background, Anchor = AnchorStyles.None };
+        title.Controls.Add(new Label
         {
             Text = "IBA KeyMorph",
             AutoSize = true,
-            Font = Theme.Font(20f, FontStyle.Bold),
+            Font = Theme.Font(19f, FontStyle.Bold),
             ForeColor = Theme.Text,
-        }));
-        layout.Controls.Add(Centered(Theme.MutedText($"Версия {version} · автоматическое переключение EN ⇄ RU", 400)));
+            Margin = new Padding(0, 0, 4, 0),
+        });
+        // The orange dot of the IBA mark.
+        title.Controls.Add(new Dot(Theme.Orange, 9) { Margin = new Padding(0, 24, 0, 0) });
+        layout.Controls.Add(title);
+        layout.Controls.Add(Centered(Theme.MutedText($"Версия {version} · переключатель раскладки клавиатуры, EN ⇄ RU", 460)));
 
-        var card = new TableLayoutPanel
+        var card = new CardTable
         {
             ColumnCount = 1,
             AutoSize = true,
             Dock = DockStyle.Fill,
-            BackColor = Theme.Surface,
             Padding = new Padding(16, 12, 16, 12),
             Margin = new Padding(0, 18, 0, 18),
         };
@@ -65,9 +69,9 @@ internal sealed class AboutForm : Form
         {
             Text = "Проект на GitHub",
             AutoSize = true,
-            LinkColor = Theme.Glow,
-            ActiveLinkColor = Theme.Text,
-            VisitedLinkColor = Theme.Glow,
+            LinkColor = Theme.Accent,
+            ActiveLinkColor = Theme.AccentHover,
+            VisitedLinkColor = Theme.Accent,
             Anchor = AnchorStyles.None,
         };
         link.LinkClicked += (_, _) => Process.Start(new ProcessStartInfo(ProjectUrl) { UseShellExecute = true });

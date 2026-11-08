@@ -30,13 +30,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _diagnosticsItem = new ToolStripMenuItem("Подробная диагностика (пишет слова в журнал)", null, (_, _) => ToggleDiagnostics());
         var menu = new ContextMenuStrip
         {
-            Renderer = new DarkMenuRenderer(),
+            Renderer = new BrandMenuRenderer(),
             BackColor = Theme.Surface,
             ForeColor = Theme.Text,
-            Font = Theme.Font(9.75f),
+            Font = Theme.Font(9.5f),
             ShowImageMargin = true,
         };
-        menu.Items.Add(new ToolStripMenuItem("IBA KeyMorph", Theme.Panda, (_, _) => ShowAbout()) { Font = Theme.Font(9.75f, FontStyle.Bold) });
+        menu.Items.Add(new ToolStripMenuItem("IBA KeyMorph", Theme.Panda, (_, _) => ShowAbout()) { Font = Theme.Font(9.5f, FontStyle.Bold) });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_enabledItem);
         menu.Items.Add(_autoSwitchItem);

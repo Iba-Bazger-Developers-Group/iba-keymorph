@@ -8,6 +8,7 @@ internal sealed class AppPickerForm : Form
     private readonly ToggleRow _background = new("Показать фоновые процессы");
     private readonly AppListView _list = new(checkBoxes: true) { MultiSelect = false };
     private readonly HashSet<string> _checked = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Label _empty = Theme.EmptyState(string.Empty);
     private IReadOnlyList<AppEntry> _apps = Array.Empty<AppEntry>();
 
     public AppPickerForm(IEnumerable<string> alreadyExcluded)
@@ -15,7 +16,7 @@ internal sealed class AppPickerForm : Form
         _alreadyExcluded = new HashSet<string>(alreadyExcluded, StringComparer.OrdinalIgnoreCase);
         Text = "Добавить программы";
         Icon = TrayIcons.AppIcon;
-        Font = Theme.Font(9.75f);
+        Font = Theme.Font(9.5f);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MinimizeBox = false;
         MaximizeBox = false;
@@ -61,7 +62,7 @@ internal sealed class AppPickerForm : Form
             }
         };
 
-        Theme.DarkControl(_search);
+        Theme.StyleControl(_search);
         _search.TextChanged += (_, _) => Fill();
         _background.CheckedChanged += (_, _) => Reload();
 
@@ -88,6 +89,7 @@ internal sealed class AppPickerForm : Form
         var listBox = Theme.Boxed(_list, 6);
         listBox.Dock = DockStyle.Fill;
         listBox.Margin = new Padding(0, 6, 0, 12);
+        listBox.Controls.Add(_empty);
         layout.Controls.Add(listBox, 0, 4);
 
         var buttons = new FlowLayoutPanel
@@ -156,6 +158,15 @@ internal sealed class AppPickerForm : Form
         }
 
         _list.EndUpdate();
+        _empty.Text = filter.Length > 0
+            ? "Ничего не найдено. Измените запрос или покажите фоновые процессы."
+            : "Нет открытых программ, которых ещё нет в списке исключений.";
+        _empty.Visible = _list.Items.Count == 0;
+        if (_empty.Visible)
+        {
+            _empty.BringToFront();
+        }
+
         UpdateAddButton();
     }
 

@@ -23,6 +23,16 @@ internal static class UiSnapshots
             }
         }
 
+        // Empty program list: the empty-state message instead of a blank box.
+        var emptySettings = new AppSettings { ExcludedApps = new SortedSet<string>(StringComparer.OrdinalIgnoreCase) };
+        using (var form = new SettingsForm(emptySettings, service))
+        {
+            form.ShowPage(2);
+            Save(form, Path.Combine(directory, "settings-3-empty.png"));
+        }
+
+        SaveTrayIcons(Path.Combine(directory, "tray-icons.png"));
+
         using (var about = new AboutForm())
         {
             Save(about, Path.Combine(directory, "about.png"));
@@ -32,6 +42,28 @@ internal static class UiSnapshots
         {
             Save(picker, Path.Combine(directory, "picker.png"));
         }
+    }
+
+    /// <summary>Tray badges (EN, RU, other layout, switched off) magnified 8x on the tray background colours.</summary>
+    private static void SaveTrayIcons(string path)
+    {
+        using var icons = new TrayIcons();
+        var items = new[] { ("EN", true), ("RU", true), ("UK", true), ("EN", false) };
+        var cell = SystemInformation.SmallIconSize.Width * 8;
+        using var sheet = new Bitmap(cell * items.Length + 16 * (items.Length + 1), cell + 32);
+        using (var g = Graphics.FromImage(sheet))
+        {
+            g.Clear(Color.FromArgb(32, 32, 32));
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+            for (var i = 0; i < items.Length; i++)
+            {
+                using var bitmap = icons.For(items[i].Item1, items[i].Item2).ToBitmap();
+                g.DrawImage(bitmap, 16 + i * (cell + 16), 16, cell, cell);
+            }
+        }
+
+        sheet.Save(path, System.Drawing.Imaging.ImageFormat.Png);
     }
 
     private static void Save(Form form, string path)

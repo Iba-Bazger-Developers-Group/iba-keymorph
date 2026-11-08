@@ -44,20 +44,23 @@ internal sealed class TrayIcons : IDisposable
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             g.Clear(Color.Transparent);
 
-            var color = !active ? Color.FromArgb(120, 120, 120) : label switch
+            // IBA colours: EN in IBA Blue, RU in IBA Orange (Ink letters, 9.3:1), any other layout in Ink,
+            // switched off in grey. The letters carry the meaning; the colour only helps.
+            var (color, ink) = !active ? (Color.FromArgb(96, 106, 128), Color.White) : label switch
             {
-                "EN" => Color.FromArgb(37, 99, 235),
-                "RU" => Color.FromArgb(220, 38, 38),
-                _ => Color.FromArgb(124, 58, 237),
+                "EN" => (Theme.Blue, Color.White),
+                "RU" => (Theme.Orange, Theme.Ink),
+                _ => (Theme.Ink, Color.White),
             };
             using var background = new SolidBrush(color);
             using var path = RoundedRectangle(new RectangleF(0, 0, size - 1, size - 1), size / 4f);
             g.FillPath(background, path);
 
             var text = label.Length > 2 ? label[..2] : label;
-            using var font = new Font("Segoe UI", size * 0.42f, FontStyle.Bold, GraphicsUnit.Pixel);
+            using var font = new Font("Segoe UI", size * 0.52f, FontStyle.Bold, GraphicsUnit.Pixel);
             using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(text, font, Brushes.White, new RectangleF(0, 0, size, size + 1), format);
+            using var textBrush = new SolidBrush(ink);
+            g.DrawString(text, font, textBrush, new RectangleF(0, 0, size, size + 1), format);
         }
 
         var handle = bitmap.GetHicon();

@@ -18,6 +18,9 @@
     <EmbeddedResource Include="..\..\assets\keymorph.ico" LogicalName="IbaKeyMorph.Assets.keymorph.ico" />
     <EmbeddedResource Include="..\..\assets\switch.wav" LogicalName="IbaKeyMorph.Assets.switch.wav" />
     <EmbeddedResource Include="..\..\assets\panda-logo.png" LogicalName="IbaKeyMorph.Assets.panda.png" />
+    <!-- Manrope (SIL OFL, see assets/fonts/OFL.txt): IBA brand typeface, registered at start-up. -->
+    <EmbeddedResource Include="..\..\assets\fonts\Manrope-Regular.ttf" LogicalName="IbaKeyMorph.Assets.Manrope-Regular.ttf" />
+    <EmbeddedResource Include="..\..\assets\fonts\Manrope-Bold.ttf" LogicalName="IbaKeyMorph.Assets.Manrope-Bold.ttf" />
   </ItemGroup>
 
   <ItemGroup>

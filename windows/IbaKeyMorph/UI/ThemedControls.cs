@@ -21,7 +21,7 @@ internal sealed class IbaButton : Button
         Kind = kind;
         FlatStyle = FlatStyle.Flat;
         FlatAppearance.BorderSize = 0;
-        Font = Theme.Font(9.75f, FontStyle.Bold);
+        Font = Theme.Font(9.5f, FontStyle.Bold);
         ForeColor = Theme.Text;
         BackColor = Theme.Background;
         Cursor = Cursors.Hand;
@@ -68,27 +68,38 @@ internal sealed class IbaButton : Button
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.Clear(Parent?.BackColor ?? Theme.Background);
 
-        var (fill, border) = Kind switch
-        {
-            ButtonKind.Primary => (_hover ? Theme.AccentHover : Theme.Accent, Theme.Accent),
-            ButtonKind.Tab when _selected => (Theme.Accent, Theme.Accent),
-            _ => (_hover ? Theme.SurfaceHover : Theme.Surface, Theme.Border),
-        };
+        // Primary and selected tabs: blue with white text (5.6:1). Everything else: white with a border.
+        var filled = Kind == ButtonKind.Primary || (Kind == ButtonKind.Tab && _selected);
+        var (fill, border) = filled
+            ? (_hover && Enabled ? Theme.AccentHover : Theme.Accent, Theme.Accent)
+            : (_hover && Enabled ? Theme.SurfaceHover : Theme.Surface, _hover && Enabled ? Theme.BorderStrong : Theme.Border);
+        var textColor = filled ? Color.White : Theme.Text;
         if (!Enabled)
         {
-            fill = Theme.Surface;
+            fill = Theme.Mist;
+            border = Theme.Border;
+            textColor = Theme.Muted;
         }
 
-        var rect = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 1.5f);
-        using (var path = Theme.RoundedRectangle(rect, 8))
+        var rect = new RectangleF(1.5f, 1.5f, Width - 3.5f, Height - 3.5f);
+        using (var path = Theme.RoundedRectangle(rect, 10))
         using (var brush = new SolidBrush(fill))
-        using (var pen = new Pen(Focused && ShowFocusCues ? Theme.Glow : border))
+        using (var pen = new Pen(border))
         {
             g.FillPath(brush, path);
             g.DrawPath(pen, path);
         }
 
-        TextRenderer.DrawText(g, Text, Font, ClientRectangle, Enabled ? Theme.Text : Theme.Muted,
+        if (Focused && ShowFocusCues)
+        {
+            // Visible keyboard focus: an Ink ring outside the button.
+            var ring = new RectangleF(0.75f, 0.75f, Width - 2.5f, Height - 2.5f);
+            using var ringPath = Theme.RoundedRectangle(ring, 11);
+            using var ringPen = new Pen(Theme.FocusRing, 2f);
+            g.DrawPath(ringPen, ringPath);
+        }
+
+        TextRenderer.DrawText(g, Text, Font, ClientRectangle, textColor,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine);
     }
 }
@@ -103,7 +114,7 @@ internal sealed class ToggleRow : Control
     public ToggleRow(string text)
     {
         Text = text;
-        Font = Theme.Font(10f);
+        Font = Theme.Font(9.5f);
         ForeColor = Theme.Text;
         BackColor = Theme.Background;
         Cursor = Cursors.Hand;
@@ -134,8 +145,11 @@ internal sealed class ToggleRow : Control
 
     public override Size GetPreferredSize(Size proposedSize)
     {
-        var text = TextRenderer.MeasureText(Text, Font);
-        return new Size(SwitchWidth + 12 + text.Width + 4, Math.Max(SwitchHeight + 8, text.Height + 8));
+        // A long label wraps inside the width it is given (the switch keeps its place on the right).
+        var available = proposedSize.Width > 0 ? proposedSize.Width : (Width > 0 ? Width : int.MaxValue / 4);
+        var textWidth = Math.Max(40, available - SwitchWidth - 14);
+        var text = TextRenderer.MeasureText(Text, Font, new Size(textWidth, 0), TextFormatFlags.WordBreak | TextFormatFlags.Left);
+        return new Size(SwitchWidth + 12 + text.Width + 4, Math.Max(SwitchHeight + 10, text.Height + 10));
     }
 
     protected override void OnClick(EventArgs e)
@@ -176,20 +190,25 @@ internal sealed class ToggleRow : Control
 
         var top = (Height - SwitchHeight) / 2f;
         var track = new RectangleF(Width - SwitchWidth - 2, top, SwitchWidth, SwitchHeight);
+        // On = IBA Blue; off = a mid grey-blue track so the state is visible without colour alone (knob side).
+        var off = Color.FromArgb(150, 162, 188);
         using (var path = Theme.RoundedRectangle(track, SwitchHeight / 2f))
-        using (var brush = new SolidBrush(_checked ? Theme.Accent : Theme.Surface))
-        using (var pen = new Pen(Focused ? Theme.Glow : _checked ? Theme.Accent : Theme.Border, Focused ? 1.5f : 1f))
+        using (var brush = new SolidBrush(_checked ? Theme.Accent : off))
         {
             g.FillPath(brush, path);
-            g.DrawPath(pen, path);
+        }
+
+        if (Focused && ShowFocusCues)
+        {
+            var ring = new RectangleF(track.X - 3, track.Y - 3, track.Width + 6, track.Height + 6);
+            using var ringPath = Theme.RoundedRectangle(ring, ring.Height / 2f);
+            using var ringPen = new Pen(Theme.FocusRing, 2f);
+            g.DrawPath(ringPen, ringPath);
         }
 
         var knob = SwitchHeight - 8;
         var x = _checked ? track.Right - knob - 4 : track.X + 4;
-        using (var brush = new SolidBrush(_checked ? Color.White : Theme.Muted))
-        {
-            g.FillEllipse(brush, x, top + 4, knob, knob);
-        }
+        g.FillEllipse(Brushes.White, x, top + 4, knob, knob);
 
         var textRect = new Rectangle(0, 0, Width - SwitchWidth - 14, Height);
         TextRenderer.DrawText(g, Text, Font, textRect, ForeColor,
@@ -198,7 +217,7 @@ internal sealed class ToggleRow : Control
 }
 
 /// <summary>
-/// Owner-drawn program list: icon, name, process name on the right, IBA selection colours and
+/// Owner-drawn program list: icon, name, process name on the right, IBA Blue selection and
 /// optional check boxes. Items carry an <see cref="AppEntry"/> in <see cref="ListViewItem.Tag"/>.
 /// </summary>
 internal sealed class AppListView : ListView
@@ -213,10 +232,10 @@ internal sealed class AppListView : ListView
         HeaderStyle = ColumnHeaderStyle.None;
         BorderStyle = BorderStyle.None;
         OwnerDraw = true;
-        Font = Theme.Font(9.75f);
+        Font = Theme.Font(9.5f);
         SmallImageList = new ImageList { ColorDepth = ColorDepth.Depth32Bit, ImageSize = new Size(28, 28) };
         Columns.Add(string.Empty);
-        Theme.DarkControl(this);
+        Theme.StyleControl(this);
         SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
         DrawItem += (_, e) => PaintItem(e);
         DrawSubItem += (_, _) => { };
@@ -262,8 +281,8 @@ internal sealed class AppListView : ListView
             var box = new Rectangle(x, bounds.Y + (bounds.Height - CheckSize) / 2, CheckSize, CheckSize);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             using (var path = Theme.RoundedRectangle(box, 4))
-            using (var fill = new SolidBrush(e.Item.Checked ? Theme.Accent : Theme.Background))
-            using (var border = new Pen(e.Item.Checked ? Theme.Glow : Theme.Border))
+            using (var fill = new SolidBrush(e.Item.Checked ? Theme.Accent : Theme.Surface))
+            using (var border = new Pen(e.Item.Checked ? Theme.Accent : Theme.BorderStrong))
             {
                 g.FillPath(fill, path);
                 g.DrawPath(border, path);
@@ -296,8 +315,8 @@ internal sealed class AppListView : ListView
         var secondaryWidth = TextRenderer.MeasureText(secondary, Font).Width;
         var right = bounds.Right - 10;
         TextRenderer.DrawText(g, secondary, Font, new Rectangle(right - secondaryWidth, bounds.Y, secondaryWidth, bounds.Height),
-            selected ? Theme.Text : Theme.Muted, TextFormatFlags.VerticalCenter | TextFormatFlags.Right | TextFormatFlags.SingleLine);
+            selected ? Color.White : Theme.Muted, TextFormatFlags.VerticalCenter | TextFormatFlags.Right | TextFormatFlags.SingleLine);
         TextRenderer.DrawText(g, e.Item.Text, Font, new Rectangle(x, bounds.Y, Math.Max(0, right - secondaryWidth - 12 - x), bounds.Height),
-            Theme.Text, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+            selected ? Color.White : Theme.Text, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
     }
 }

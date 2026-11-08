@@ -3,7 +3,7 @@ using IbaKeyMorph.Settings;
 
 namespace IbaKeyMorph.UI;
 
-/// <summary>Settings window in the IBA style, built in code (no designer).</summary>
+/// <summary>Settings window in the IBA brand style (brandbook 4.2), built in code (no designer).</summary>
 internal sealed class SettingsForm : Form
 {
     private const int ContentWidth = 600;
@@ -26,6 +26,15 @@ internal sealed class SettingsForm : Form
         Font = new Font("Consolas", 10.5f),
     };
 
+    private readonly Label _exceptionsEmpty = Theme.EmptyState(
+        "Пока пусто. Слова, которые не нужно исправлять, появятся здесь: напишите их по одному в строке " +
+        "или отмените исправление клавишей Pause / двойным Shift.");
+
+    private readonly Label _appsEmpty = Theme.EmptyState(
+        "Исключений нет: раскладка исправляется во всех программах. Добавьте терминал, менеджер паролей " +
+        "или удалённый рабочий стол — там автоисправление мешает.");
+
+
     private readonly AppListView _apps = new(checkBoxes: false) { MultiSelect = true };
     private readonly SortedDictionary<string, AppEntry> _excluded = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<(IbaButton Tab, Control Page)> _pages = new();
@@ -37,7 +46,7 @@ internal sealed class SettingsForm : Form
         _service = service;
         Text = "IBA KeyMorph — настройки";
         Icon = TrayIcons.AppIcon;
-        Font = Theme.Font(9.75f);
+        Font = Theme.Font(9.5f);
         FormBorderStyle = FormBorderStyle.FixedSingle;
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
@@ -93,26 +102,29 @@ internal sealed class SettingsForm : Form
         };
         header.Controls.Add(logo, 0, 0);
         header.SetRowSpan(logo, 2);
-        header.Controls.Add(new Label
+        var titleRow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, BackColor = Theme.Background, Margin = new Padding(0, 6, 0, 0) };
+        titleRow.Controls.Add(new Label
         {
             Text = "IBA KeyMorph",
             AutoSize = true,
-            Font = Theme.Font(22f, FontStyle.Bold),
+            Font = Theme.Font(21f, FontStyle.Bold),
             ForeColor = Theme.Text,
-            Margin = new Padding(0, 6, 0, 0),
-        }, 1, 0);
-        header.Controls.Add(Theme.MutedText("Раскладка исправляется сама. EN ⇄ RU, Windows и macOS.", 480), 1, 1);
+            Margin = new Padding(0, 0, 4, 0),
+        });
+        // The orange dot of the IBA mark: the one rare accent of the window.
+        titleRow.Controls.Add(new Dot(Theme.Orange, 10) { Margin = new Padding(0, 28, 0, 0) });
+        header.Controls.Add(titleRow, 1, 0);
+        header.Controls.Add(Theme.MutedText("Переключатель раскладки клавиатуры. Автоисправление EN ⇄ RU.", 480), 1, 1);
         return header;
     }
 
     private Control StatusCard()
     {
-        var card = new TableLayoutPanel
+        var card = new CardTable
         {
             ColumnCount = 1,
             AutoSize = true,
             Dock = DockStyle.Fill,
-            BackColor = Theme.Surface,
             Padding = new Padding(18, 14, 18, 14),
             Margin = new Padding(0, 0, 0, 14),
         };
@@ -120,14 +132,18 @@ internal sealed class SettingsForm : Form
 
         var layout = SafeLayout();
         var running = _settings.Enabled;
-        card.Controls.Add(new Label
+        var state = new FlowLayoutPanel { AutoSize = true, WrapContents = false, BackColor = Theme.Surface, Margin = new Padding(0, 0, 0, 2) };
+        // Status is a word plus a dot, never the colour alone.
+        state.Controls.Add(new Dot(running ? Theme.Success : Theme.BorderStrong, 12) { Margin = new Padding(0, 10, 8, 0) });
+        state.Controls.Add(new Label
         {
             Text = running ? $"Работает · {layout}" : $"Выключено · {layout}",
             AutoSize = true,
-            Font = Theme.Font(16f, FontStyle.Bold),
+            Font = Theme.Font(15f, FontStyle.Bold),
             ForeColor = running ? Theme.Text : Theme.Muted,
-            Margin = new Padding(0, 0, 0, 2),
+            Margin = Padding.Empty,
         });
+        card.Controls.Add(state);
 
         var installed = _service.Layouts.Installed;
         var supported = installed.Where(l => l.Language is not null).Select(l => l.ShortName).Distinct().ToList();
@@ -138,11 +154,11 @@ internal sealed class SettingsForm : Form
             $" · нажатий перехвачено: {_service.KeysSeen} · исправлено слов: {_service.Corrections}";
         card.Controls.Add(new Label
         {
-            Text = detail,
+            Text = (supported.Count >= 2 ? string.Empty : "⚠ ") + detail,
             AutoSize = true,
             MaximumSize = new Size(ContentWidth - 40, 0),
-            ForeColor = supported.Count >= 2 ? Theme.Muted : Theme.Caption,
-            Font = Theme.Font(9.5f),
+            ForeColor = supported.Count >= 2 ? Theme.Muted : Theme.Warning,
+            Font = Theme.Font(9f),
         });
         return card;
     }
@@ -193,7 +209,8 @@ internal sealed class SettingsForm : Form
         };
         foreach (var toggle in new[] { _autoSwitch, _previousWord, _capsLock, _pause, _doubleShift, _sound, _autostart })
         {
-            toggle.Size = new Size(ContentWidth - 8, toggle.GetPreferredSize(Size.Empty).Height);
+            var width = ContentWidth - 8;
+            toggle.Size = new Size(width, toggle.GetPreferredSize(new Size(width, 0)).Height);
             panel.Controls.Add(toggle);
         }
 
@@ -211,10 +228,18 @@ internal sealed class SettingsForm : Form
         page.Controls.Add(Theme.MutedText(
             "Слова, которые никогда не исправляются, по одному в строке. Слово попадает сюда само, если отменить исправление.",
             ContentWidth), 0, 0);
-        Theme.DarkControl(_exceptions);
+        Theme.StyleControl(_exceptions);
         var box = Theme.Boxed(_exceptions, 10);
         box.Dock = DockStyle.Fill;
         box.Margin = new Padding(0, 10, 0, 0);
+        box.Controls.Add(_exceptionsEmpty);
+        _exceptionsEmpty.Click += (_, _) => _exceptions.Focus();
+        _exceptions.TextChanged += (_, _) => RefreshEmptyStates();
+        _exceptions.GotFocus += (_, _) =>
+        {
+            _exceptionsEmpty.Visible = false;
+        };
+        _exceptions.LostFocus += (_, _) => RefreshEmptyStates();
         page.Controls.Add(box, 0, 1);
         return page;
     }
@@ -239,6 +264,7 @@ internal sealed class SettingsForm : Form
         var box = Theme.Boxed(_apps, 6);
         box.Dock = DockStyle.Fill;
         box.Margin = new Padding(0, 10, 0, 10);
+        box.Controls.Add(_appsEmpty);
         page.Controls.Add(box, 0, 1);
 
         var addRunning = new IbaButton("Добавить из запущенных…", ButtonKind.Primary) { Width = 230 };
@@ -256,9 +282,25 @@ internal sealed class SettingsForm : Form
     private static TableLayoutPanel Column()
     {
         var page = new TableLayoutPanel { ColumnCount = 1, BackColor = Theme.Background, Padding = new Padding(0, 6, 0, 0) };
+        page.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         page.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         return page;
+    }
+
+    private void RefreshEmptyStates()
+    {
+        _exceptionsEmpty.Visible = _exceptions.TextLength == 0 && !_exceptions.Focused;
+        if (_exceptionsEmpty.Visible)
+        {
+            _exceptionsEmpty.BringToFront();
+        }
+
+        _appsEmpty.Visible = _apps.Items.Count == 0;
+        if (_appsEmpty.Visible)
+        {
+            _appsEmpty.BringToFront();
+        }
     }
 
     private Control Footer()
@@ -315,6 +357,7 @@ internal sealed class SettingsForm : Form
         }
 
         FillApps();
+        RefreshEmptyStates();
     }
 
     private void FillApps()
@@ -329,6 +372,7 @@ internal sealed class SettingsForm : Form
 
         _apps.EndUpdate();
         _remove.Enabled = false;
+        RefreshEmptyStates();
     }
 
     private void AddFromRunning()
