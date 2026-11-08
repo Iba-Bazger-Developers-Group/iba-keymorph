@@ -1,148 +1,115 @@
 #!/usr/bin/env python3
-"""Generates every IBA KeyMorph image from the IBA panda artwork (assets/panda-source.png).
+"""Derived IBA KeyMorph images, built from the IBA panda masters in assets/brand/.
 
-    python3 assets/make-assets.py
+    python3 assets/make-assets.py            # needs Pillow
 
-PANDA_FOCUS is the centre of the panda's face in the source picture (fractions of width/height);
-change it when replacing the artwork. Requires Pillow and the DejaVu Sans Bold font.
+The panda artwork is never redrawn: the masters (copied from the IBA brand folder) are only resized,
+cropped and placed on a canvas.
+
+  assets/brand/iba-icon-jade-1024.png          app icon master (panda + IBA.)    -> icon-1024.png (as is)
+  assets/brand/panda-jade-staff-sky-1254.png   panda with the staff on a clear sky -> installer banners
+
+Written by this script:
+  icon-1024.png         the icon master, unchanged (source of truth for every platform icon)
+  icon-macos-1024.png   the same icon in the macOS app-icon tile (824 px rounded square on 1024 px)
+  installer/*.bmp       Inno Setup wizard images (tall banner, small square)
+
+Not written here — exported with the brand script (C:\\MyFiles\\iba-branding\\make-icons.ps1), see README:
+  keymorph.ico          Windows application / window icon
+  panda-logo.png        512 px logo shown in the settings and About windows
+
+Brand colours (IBA brandbook 4.2): Blue #0055FD, Ink #101421, Mist #F0F3FA, Orange #FFA500.
+Banner type is Manrope (brand family) when it can be found, otherwise Segoe UI / DejaVu Sans Bold.
 """
-import io
 import os
-import struct
+import shutil
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SOURCE = os.path.join(HERE, "panda-source.png")
-FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+ICON_MASTER = os.path.join(HERE, "brand", "iba-icon-jade-1024.png")
+SKY_MASTER = os.path.join(HERE, "brand", "panda-jade-staff-sky-1254.png")
 
-PANDA_FOCUS = (0.578, 0.36)  # face centre in panda-source.png
-SQUARE_SIDE = 0.85  # square crop side as a fraction of the picture height
-CLOSE_UP_SIDE = 0.5  # crop for tiny icons: mostly the face
-
-GLOW = (46, 204, 113)
-DARK = (11, 21, 18)
+BLUE = (0, 85, 253)
+INK = (16, 20, 33)
+MIST = (240, 243, 250)
+ORANGE = (255, 165, 0)
 WHITE = (255, 255, 255)
 
-
-def source():
-    return Image.open(SOURCE).convert("RGB")
-
-
-def crop_around(img, cx, cy, w, h):
-    left = min(max(0, int(cx - w / 2)), img.width - int(w))
-    top = min(max(0, int(cy - h / 2)), img.height - int(h))
-    return img.crop((left, top, left + int(w), top + int(h)))
+FONT_CANDIDATES = [
+    os.environ.get("MANROPE_FONT", ""),
+    os.path.join(HERE, "..", "..", "iba-mott", "assets", "fonts", "Manrope-Variable.ttf"),
+    "C:/MyFiles/iba-mott/assets/fonts/Manrope-Variable.ttf",
+    "C:/Windows/Fonts/segoeuib.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+]
 
 
-def panda_square(s, close_up=False):
-    img = source()
-    side = img.height * (CLOSE_UP_SIDE if close_up else SQUARE_SIDE)
-    cx, cy = img.width * PANDA_FOCUS[0], img.height * PANDA_FOCUS[1]
-    if not close_up:
-        cy += side * 0.12  # leave room for the badge under the face
-    out = crop_around(img, cx, cy, side, side).resize((s, s), Image.LANCZOS)
-    if s > side:
-        out = out.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
-    return out.convert("RGBA")
+def font(size, weight=700):
+    for path in FONT_CANDIDATES:
+        if path and os.path.exists(path):
+            f = ImageFont.truetype(path, size)
+            try:
+                f.set_variation_by_axes([weight])  # Manrope variable font; ignored by static fonts
+            except Exception:
+                pass
+            return f
+    return ImageFont.load_default()
 
 
-def swap_badge(img, s):
-    """'A ⇄ Я' badge across the bottom of the picture."""
-    d = ImageDraw.Draw(img)
-    h = int(s * 0.25)
-    top = s - h - int(s * 0.03)
-    pad = int(s * 0.08)
-    d.rounded_rectangle([pad, top, s - pad, top + h], radius=h // 2, fill=DARK + (225,), outline=GLOW + (255,), width=max(1, s // 96))
-    font = ImageFont.truetype(FONT, int(h * 0.72))
-    cy = top + h / 2
-    for text, cx in (("A", s * 0.3), ("Я", s * 0.7)):
-        box = d.textbbox((0, 0), text, font=font)
-        d.text((cx - (box[2] - box[0]) / 2 - box[0], cy - (box[3] - box[1]) / 2 - box[1]), text, font=font, fill=WHITE)
-    lw = max(1, int(h * 0.09))
-    x0, x1, a = s * 0.41, s * 0.59, h * 0.14
-    for y, direction in ((cy - h * 0.12, 1), (cy + h * 0.12, -1)):
-        d.line([(x0, y), (x1, y)], fill=GLOW + (255,), width=lw)
-        tip = x1 if direction == 1 else x0
-        d.polygon([(tip + direction * a * 0.4, y), (tip - direction * a, y - a), (tip - direction * a, y + a)], fill=GLOW + (255,))
+def master(path):
+    return Image.open(path).convert("RGB")
 
 
-def rounded(img, radius_ratio=0.22):
-    s = img.width
-    mask = Image.new("L", (s * 4, s * 4), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([0, 0, s * 4 - 1, s * 4 - 1], radius=int(s * 4 * radius_ratio), fill=255)
-    mask = mask.resize((s, s), Image.LANCZOS)
-    out = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    out.paste(img, (0, 0), mask)
+def rounded_tile(img, size, radius_ratio=0.2237):
+    """Image clipped to a rounded square of `size` px (4x supersampled mask)."""
+    img = img.resize((size, size), Image.LANCZOS).convert("RGBA")
+    mask = Image.new("L", (size * 4, size * 4), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, size * 4 - 1, size * 4 - 1], radius=int(size * 4 * radius_ratio), fill=255)
+    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    out.paste(img, (0, 0), mask.resize((size, size), Image.LANCZOS))
     return out
 
 
-def app_icon(s, badge=True):
-    img = panda_square(s, close_up=s <= 32)
-    if badge:
-        swap_badge(img, s)
-    return rounded(img)
-
-
 def wizard_banner(w, h):
-    """Tall installer banner: the panda in full height with the product name below."""
-    img = source()
-    strip_h = img.height
-    strip_w = strip_h * w / h
-    banner = crop_around(img, img.width * PANDA_FOCUS[0], strip_h / 2, strip_w, strip_h)
-    banner = banner.resize((w * 2, h * 2), Image.LANCZOS).convert("RGBA")
-    shade = Image.new("RGBA", banner.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(shade)
-    for y in range(banner.height):
-        t = max(0.0, (y / banner.height - 0.5) / 0.5)
-        d.line([(0, y), (banner.width, y)], fill=DARK + (int(235 * t),))
-    banner = Image.alpha_composite(banner, shade)
+    """Tall installer banner: the panda with the staff, product name on an ink footer."""
+    sky = master(SKY_MASTER)
+    crop_w = int(sky.height * w / h)
+    left = 215  # most of the staff on the left, the whole head on the right
+    art = sky.crop((left, 0, left + crop_w, sky.height)).resize((w * 3, h * 3), Image.LANCZOS)
+    footer_h = int(art.height * 0.2)
+    banner = art.copy()
     d = ImageDraw.Draw(banner)
-    for text, size, y, color in (("IBA KeyMorph", 0.105, 0.78, WHITE), ("EN ⇄ RU", 0.075, 0.86, GLOW)):
-        font = ImageFont.truetype(FONT, int(banner.width * size))
-        box = d.textbbox((0, 0), text, font=font)
-        d.text(((banner.width - (box[2] - box[0])) / 2 - box[0], banner.height * y), text, font=font, fill=color)
+    top = banner.height - footer_h
+    d.rectangle([0, top, banner.width, banner.height], fill=INK)
+    d.rectangle([0, top, banner.width, top + max(3, w // 40)], fill=BLUE)
+
+    pad = int(banner.width * 0.09)
+    title = font(int(banner.width * 0.115), 800)
+    sub = font(int(banner.width * 0.062), 600)
+    y = top + int(footer_h * 0.2)
+    d.text((pad, y), "IBA KeyMorph", font=title, fill=WHITE)
+    tw = d.textlength("IBA KeyMorph", font=title)
+    dot = int(banner.width * 0.03)
+    base = y + int(banner.width * 0.115 * 0.93)
+    d.ellipse([pad + tw + dot * 0.4, base - dot, pad + tw + dot * 1.4, base], fill=ORANGE)
+    d.text((pad, y + int(banner.width * 0.15)), "Раскладка клавиатуры", font=sub, fill=(200, 210, 232))
     return banner.resize((w, h), Image.LANCZOS)
 
 
-def write_ico(frames, path):
-    """ICO with PNG-compressed frames (supported since Windows Vista)."""
-    entries, blobs = [], []
-    offset = 6 + 16 * len(frames)
-    for frame in frames:
-        buf = io.BytesIO()
-        frame.save(buf, format="PNG")
-        data = buf.getvalue()
-        n = frame.width
-        entries.append(struct.pack("<BBBBHHII", n % 256, n % 256, 0, 0, 1, 32, len(data), offset))
-        blobs.append(data)
-        offset += len(data)
-    with open(path, "wb") as f:
-        f.write(struct.pack("<HHH", 0, 1, len(frames)))
-        f.write(b"".join(entries))
-        f.write(b"".join(blobs))
-
-
 def main():
-    out = HERE
-    logo = rounded(ImageEnhance.Contrast(panda_square(512)).enhance(1.05))
-    logo.save(os.path.join(out, "panda-logo.png"))
+    shutil.copyfile(ICON_MASTER, os.path.join(HERE, "icon-1024.png"))
 
     mac = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
-    mac.alpha_composite(app_icon(824), (100, 100))
-    mac.save(os.path.join(out, "icon-1024.png"))
+    mac.alpha_composite(rounded_tile(master(ICON_MASTER), 824), (100, 100))
+    mac.save(os.path.join(HERE, "icon-macos-1024.png"))
 
-    sizes = [16, 20, 24, 32, 40, 48, 64, 128, 256]
-    write_ico([app_icon(n, badge=n >= 40) for n in sizes], os.path.join(out, "keymorph.ico"))
-
-    installer = os.path.join(out, "installer")
+    installer = os.path.join(HERE, "installer")
     os.makedirs(installer, exist_ok=True)
     for w, h in ((164, 314), (246, 471), (328, 628)):
-        wizard_banner(w, h).convert("RGB").save(os.path.join(installer, f"wizard-{w}x{h}.bmp"), format="BMP")
+        wizard_banner(w, h).save(os.path.join(installer, f"wizard-{w}x{h}.bmp"), format="BMP")
     for n in (55, 83, 110):
-        small = Image.new("RGBA", (n, n), (255, 255, 255, 255))
-        small.alpha_composite(app_icon(n, badge=n >= 80))
-        small.convert("RGB").save(os.path.join(installer, f"wizard-small-{n}.bmp"), format="BMP")
+        master(ICON_MASTER).resize((n, n), Image.LANCZOS).save(os.path.join(installer, f"wizard-small-{n}.bmp"), format="BMP")
     print("assets regenerated")
 
 
