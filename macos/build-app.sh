@@ -20,14 +20,17 @@ cp "$BIN_DIR/IBAKeyMorph" "$APP/Contents/MacOS/IBAKeyMorph"
 sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD_NUMBER/" Resources/Info.plist > "$APP/Contents/Info.plist"
 cp ../data/en.txt ../data/ru.txt "$APP/Contents/Resources/"
 cp ../assets/panda-logo.png "$APP/Contents/Resources/"
+# Manrope (IBA brand typeface, SIL OFL): registered at run time by SettingsView (IBA.hasManrope).
+cp ../assets/fonts/Manrope-Regular.ttf ../assets/fonts/Manrope-Bold.ttf ../assets/fonts/OFL.txt "$APP/Contents/Resources/"
 
 ICONSET="$BUILD_DIR/AppIcon.iconset"
 rm -rf "$ICONSET"
 mkdir -p "$ICONSET"
+# icon-macos-1024.png: the IBA panda icon in the macOS tile (assets/make-assets.py).
 for size in 16 32 128 256 512; do
-  sips -z "$size" "$size" ../assets/icon-1024.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+  sips -z "$size" "$size" ../assets/icon-macos-1024.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
   double=$((size * 2))
-  sips -z "$double" "$double" ../assets/icon-1024.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+  sips -z "$double" "$double" ../assets/icon-macos-1024.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 rm -rf "$ICONSET"

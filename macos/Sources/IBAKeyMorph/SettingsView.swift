@@ -1,21 +1,60 @@
 import AppKit
+import CoreText
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// IBA palette (same as the Windows app and IBA Publisher).
+/// IBA brandbook 4.2: Blue #0055FD for the one main action, white cards on Mist, Ink text,
+/// Orange #FFA500 as the rare accent. Type is Manrope (bundled), system font if it cannot be loaded.
+/// The same values are used by the Windows app (see BRAND.md).
 enum IBA {
-    static let background = Color(red: 15 / 255, green: 26 / 255, blue: 23 / 255)
-    static let surface = Color(red: 24 / 255, green: 37 / 255, blue: 32 / 255)
-    static let surfaceHover = Color(red: 32 / 255, green: 50 / 255, blue: 43 / 255)
-    static let border = Color(red: 47 / 255, green: 72 / 255, blue: 61 / 255)
-    static let accent = Color(red: 46 / 255, green: 125 / 255, blue: 91 / 255)
-    static let accentHover = Color(red: 57 / 255, green: 146 / 255, blue: 107 / 255)
-    static let glow = Color(red: 46 / 255, green: 204 / 255, blue: 113 / 255)
-    static let text = Color(red: 236 / 255, green: 243 / 255, blue: 239 / 255)
-    static let muted = Color(red: 143 / 255, green: 166 / 255, blue: 155 / 255)
-    static let caption = Color(red: 214 / 255, green: 170 / 255, blue: 92 / 255)
-    static let warning = Color(red: 240 / 255, green: 140 / 255, blue: 110 / 255)
-    static let backgroundNS = NSColor(red: 15 / 255, green: 26 / 255, blue: 23 / 255, alpha: 1)
+    // Brandbook palette.
+    static let blue = Color(red: 0 / 255, green: 85 / 255, blue: 253 / 255)      // IBA Blue  #0055FD
+    static let ink = Color(red: 16 / 255, green: 20 / 255, blue: 33 / 255)       // Ink       #101421
+    static let mist = Color(red: 240 / 255, green: 243 / 255, blue: 250 / 255)   // Mist      #F0F3FA
+    static let orange = Color(red: 255 / 255, green: 165 / 255, blue: 0 / 255)   // Orange    #FFA500
+
+    // Roles.
+    static let background = mist
+    static let surface = Color.white
+    static let surfaceHover = Color(red: 230 / 255, green: 236 / 255, blue: 249 / 255)
+    static let border = Color(red: 214 / 255, green: 222 / 255, blue: 238 / 255)
+    static let borderStrong = Color(red: 150 / 255, green: 162 / 255, blue: 188 / 255)
+    static let accent = blue
+    static let accentHover = Color(red: 0 / 255, green: 70 / 255, blue: 208 / 255)  // white text 7.7:1
+    static let text = ink
+    static let muted = Color(red: 84 / 255, green: 96 / 255, blue: 120 / 255)       // 6.4:1 on white
+    static let caption = accentHover        // small captions are blue, never orange
+    static let success = Color(red: 21 / 255, green: 120 / 255, blue: 79 / 255)
+    static let warning = Color(red: 154 / 255, green: 91 / 255, blue: 0 / 255)      // text, always with a word or ⚠︎
+    static let backgroundNS = NSColor(red: 240 / 255, green: 243 / 255, blue: 250 / 255, alpha: 1)
+
+    /// Manrope Regular and Bold are registered for this process from Contents/Resources
+    /// (or assets/fonts in a source checkout); false means the system font is used instead.
+    static let hasManrope: Bool = {
+        let repository = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // IBAKeyMorph
+            .deletingLastPathComponent() // Sources
+            .deletingLastPathComponent() // macos
+            .deletingLastPathComponent() // repository root
+        for name in ["Manrope-Regular", "Manrope-Bold"] {
+            let url = Bundle.main.url(forResource: name, withExtension: "ttf")
+                ?? repository.appendingPathComponent("assets/fonts/\(name).ttf")
+            // An already registered font is not an error here.
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+
+        return NSFont(name: "Manrope-Regular", size: 12) != nil
+    }()
+
+    /// Only Regular and Bold ship, so every weight at semibold and above is Bold.
+    static func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        let bold = weight == .bold || weight == .semibold || weight == .heavy || weight == .black
+        if hasManrope {
+            return .custom(bold ? "Manrope-Bold" : "Manrope-Regular", size: size)
+        }
+
+        return .system(size: size, weight: bold ? .bold : .regular)
+    }
 }
 
 struct IBAButtonStyle: ButtonStyle {
@@ -30,24 +69,27 @@ private struct IBAButtonBody: View {
     let configuration: ButtonStyleConfiguration
     let primary: Bool
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.isFocused) private var isFocused
 
     var body: some View {
         let fill = primary
             ? (configuration.isPressed ? IBA.accentHover : IBA.accent)
             : (configuration.isPressed ? IBA.surfaceHover : IBA.surface)
         configuration.label
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(IBA.text)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 9)
-            .background(RoundedRectangle(cornerRadius: 8).fill(fill))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(primary ? IBA.accent : IBA.border, lineWidth: 1))
+            .font(IBA.font(13, .bold))
+            .foregroundColor(primary ? Color.white : IBA.text)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: 10).fill(fill))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(primary ? IBA.accent : IBA.border, lineWidth: 1))
+            // Visible keyboard focus: an Ink ring outside the button.
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(IBA.ink, lineWidth: 2).padding(-3).opacity(isFocused ? 1 : 0))
             .opacity(isEnabled ? 1 : 0.45)
             .contentShape(Rectangle())
     }
 }
 
-/// IBA switch: green when on, independent of window focus and system accent colour.
+/// IBA switch: IBA Blue when on, independent of window focus and the system accent colour.
 struct IBASwitchStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         HStack {
@@ -55,11 +97,10 @@ struct IBASwitchStyle: ToggleStyle {
             Spacer(minLength: 16)
             ZStack(alignment: configuration.isOn ? .trailing : .leading) {
                 Capsule()
-                    .fill(configuration.isOn ? IBA.accent : IBA.surface)
-                    .overlay(Capsule().stroke(configuration.isOn ? IBA.accent : IBA.border, lineWidth: 1))
+                    .fill(configuration.isOn ? IBA.accent : IBA.borderStrong)
                     .frame(width: 40, height: 22)
                 Circle()
-                    .fill(configuration.isOn ? Color.white : IBA.muted)
+                    .fill(Color.white)
                     .frame(width: 16, height: 16)
                     .padding(.horizontal, 3)
             }
@@ -67,6 +108,37 @@ struct IBASwitchStyle: ToggleStyle {
             .onTapGesture { configuration.isOn.toggle() }
         }
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(Text(configuration.isOn ? "включено" : "выключено"))
+    }
+}
+
+extension View {
+    /// White surface, thin border and rounded corners: the IBA card.
+    func ibaCard(radius: CGFloat = 12) -> some View {
+        self
+            .background(RoundedRectangle(cornerRadius: radius).fill(IBA.surface))
+            .clipShape(RoundedRectangle(cornerRadius: radius))
+            .overlay(RoundedRectangle(cornerRadius: radius).stroke(IBA.border, lineWidth: 1))
+    }
+}
+
+/// Message shown in place of an empty list or field: what is missing and what to do about it.
+struct EmptyState: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .font(IBA.font(13))
+            .foregroundColor(IBA.muted)
+            .multilineTextAlignment(.center)
+            .padding(24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .allowsHitTesting(false)
     }
 }
 
@@ -163,8 +235,9 @@ struct SettingsView: View {
         .frame(width: 640, height: 700)
         .background(IBA.background)
         .foregroundColor(IBA.text)
+        .font(IBA.font(13))
         .tint(IBA.accent)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(.light)
         .onDisappear(perform: saveExceptions)
         .sheet(isPresented: $showPicker) {
             RunningAppsPicker(excluded: Set(settings.excludedApps)) { bundleIds in
@@ -180,10 +253,15 @@ struct SettingsView: View {
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 76, height: 76)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .clipShape(RoundedRectangle(cornerRadius: 17))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                Text("IBA KeyMorph").font(.system(size: 28, weight: .bold))
-                Text("Раскладка исправляется сама. EN ⇄ RU, Windows и macOS.").foregroundColor(IBA.muted)
+                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                    Text("IBA KeyMorph").font(IBA.font(28, .bold))
+                    // The orange dot of the IBA mark: the one rare accent of the window.
+                    Circle().fill(IBA.orange).frame(width: 9, height: 9).accessibilityHidden(true)
+                }
+                Text("Переключатель раскладки клавиатуры. Автоисправление EN ⇄ RU.").foregroundColor(IBA.muted)
             }
         }
     }
@@ -191,16 +269,24 @@ struct SettingsView: View {
     private var statusCard: some View {
         TimelineView(.periodic(from: .now, by: 1)) { _ in
             let info = status()
+            let working = info.running && settings.enabled
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("СОСТОЯНИЕ").font(.system(size: 11, weight: .bold)).foregroundColor(IBA.caption)
-                    Text(!info.running ? "Не работает" : settings.enabled ? "Работает · \(info.layout)" : "Выключено · \(info.layout)")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(info.running && settings.enabled ? IBA.text : IBA.muted)
-                    Text(info.detail)
+                    Text("СОСТОЯНИЕ").font(IBA.font(11, .bold)).foregroundColor(IBA.caption)
+                    // Status is a word plus a dot, never the colour alone.
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(working ? IBA.success : (info.running ? IBA.borderStrong : IBA.warning))
+                            .frame(width: 11, height: 11)
+                            .accessibilityHidden(true)
+                        Text(!info.running ? "Не работает" : settings.enabled ? "Работает · \(info.layout)" : "Выключено · \(info.layout)")
+                            .font(IBA.font(20, .bold))
+                            .foregroundColor(working ? IBA.text : IBA.muted)
+                    }
+                    Text((info.problem ? "⚠︎ " : "") + info.detail)
                         .foregroundColor(info.problem ? IBA.warning : IBA.muted)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Версия \(AppResources.version)").font(.system(size: 11)).foregroundColor(IBA.muted)
+                    Text("Версия \(AppResources.version)").font(IBA.font(11)).foregroundColor(IBA.muted)
                 }
 
                 Spacer(minLength: 0)
@@ -211,7 +297,7 @@ struct SettingsView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(IBA.surface)
+            .ibaCard()
         }
     }
 
@@ -242,7 +328,7 @@ struct SettingsView: View {
                     }
                 }
             if let error = loginItemError {
-                Text(error).foregroundColor(IBA.caption).font(.callout)
+                Text("⚠︎ " + error).foregroundColor(IBA.warning).font(.callout)
             }
 
             toggle("Подробный журнал: записывать каждое слово (для поиска проблем)", \.diagnosticLog)
@@ -264,6 +350,13 @@ struct SettingsView: View {
                 .scrollContentBackground(.hidden)
                 .padding(8)
                 .background(IBA.surface)
+                .overlay(alignment: .center) {
+                    if exceptionsText.isEmpty {
+                        EmptyState("Пока пусто. Слова, которые не нужно исправлять, появятся здесь: напишите их по одному в строке "
+                                   + "или отмените исправление двойным ⇧ Shift.")
+                    }
+                }
+                .ibaCard(radius: 10)
         }
     }
 
@@ -277,7 +370,7 @@ struct SettingsView: View {
                         Image(nsImage: AppInfo.icon(bundleId)).resizable().frame(width: 22, height: 22)
                         Text(AppInfo.name(bundleId)).foregroundColor(IBA.text)
                         Spacer()
-                        Text(bundleId).font(.system(size: 11)).foregroundColor(IBA.muted)
+                        Text(bundleId).font(IBA.font(11)).foregroundColor(IBA.muted)
                     }
                     .padding(.vertical, 2)
                     .tag(bundleId)
@@ -285,6 +378,13 @@ struct SettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(IBA.surface)
+            .overlay(alignment: .center) {
+                if settings.excludedApps.isEmpty {
+                    EmptyState("Исключений нет: раскладка исправляется во всех программах. Добавьте терминал, "
+                               + "менеджер паролей или удалённый рабочий стол — там автоисправление мешает.")
+                }
+            }
+            .ibaCard(radius: 10)
             .onDeleteCommand(perform: removeSelectedApps)
             HStack(spacing: 10) {
                 Button("Добавить из запущенных…") { showPicker = true }
@@ -301,7 +401,7 @@ struct SettingsView: View {
     private var footer: some View {
         HStack {
             Text("⇧⇧ — последнее слово · ⌥⌥ — выделенный текст")
-                .font(.system(size: 12))
+                .font(IBA.font(12))
                 .foregroundColor(IBA.muted)
             Spacer()
             Button("Журнал") { Log.open() }
@@ -380,13 +480,13 @@ struct RunningAppsPicker: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Где не исправлять раскладку?").font(.system(size: 18, weight: .bold))
+            Text("Где не исправлять раскладку?").font(IBA.font(18, .bold))
             Text("Отметьте программы. Показаны открытые приложения.").foregroundColor(IBA.muted)
             TextField("Поиск программы…", text: $search)
                 .textFieldStyle(.plain)
                 .padding(10)
                 .background(IBA.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .ibaCard(radius: 10)
             List {
                 ForEach(filtered) { app in
                     Toggle(isOn: Binding(
@@ -402,7 +502,7 @@ struct RunningAppsPicker: View {
                             Image(nsImage: app.icon).resizable().frame(width: 22, height: 22)
                             Text(app.name)
                             Spacer()
-                            Text(app.id).font(.system(size: 11)).foregroundColor(IBA.muted)
+                            Text(app.id).font(IBA.font(11)).foregroundColor(IBA.muted)
                         }
                     }
                     .toggleStyle(.checkbox)
@@ -410,6 +510,14 @@ struct RunningAppsPicker: View {
             }
             .scrollContentBackground(.hidden)
             .background(IBA.surface)
+            .overlay(alignment: .center) {
+                if filtered.isEmpty {
+                    EmptyState(search.trimmingCharacters(in: .whitespaces).isEmpty
+                        ? "Нет открытых программ, которых ещё нет в списке исключений."
+                        : "Ничего не найдено. Измените запрос.")
+                }
+            }
+            .ibaCard(radius: 10)
             HStack {
                 Spacer()
                 Button("Отмена") { dismiss() }
@@ -427,7 +535,9 @@ struct RunningAppsPicker: View {
         .frame(width: 540, height: 540)
         .background(IBA.background)
         .foregroundColor(IBA.text)
-        .preferredColorScheme(.dark)
+        .font(IBA.font(13))
+        .tint(IBA.accent)
+        .preferredColorScheme(.light)
         .onAppear(perform: load)
     }
 
@@ -499,7 +609,7 @@ final class SettingsWindowController {
             window.styleMask = [.titled, .closable, .fullSizeContentView]
             window.titlebarAppearsTransparent = true
             window.backgroundColor = IBA.backgroundNS
-            window.appearance = NSAppearance(named: .darkAqua)
+            window.appearance = NSAppearance(named: .aqua)
             window.isReleasedWhenClosed = false
             window.center()
             self.window = window

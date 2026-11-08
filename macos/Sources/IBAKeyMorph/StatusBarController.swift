@@ -143,7 +143,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         let alert = NSAlert()
         alert.messageText = "IBA KeyMorph \(AppResources.version)"
         alert.informativeText = """
-            Автоматическое переключение раскладки клавиатуры EN ⇄ RU.
+            IBA KeyMorph — переключатель раскладки клавиатуры. Автоматически исправляет раскладку EN ⇄ RU.
 
             Горячие клавиши:
             ⇧⇧ (дважды Shift) — исправить или отменить последнее слово

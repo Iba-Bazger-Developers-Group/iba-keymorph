@@ -20,6 +20,16 @@ enum UISnapshots {
         save(SettingsView(settings: settings, status: { noAccess }, onChange: {}, onClose: {}),
              size: NSSize(width: 640, height: 700), to: directory.appendingPathComponent("settings-no-access.png"))
 
+        // Empty lists: the empty-state messages instead of blank boxes.
+        let emptyDefaults = UserDefaults(suiteName: "com.iba.keymorph.snapshots.empty") ?? .standard
+        let empty = Settings(defaults: emptyDefaults)
+        empty.setExcludedApps([])
+        empty.setExceptions([])
+        for tab in 1..<3 {
+            save(SettingsView(settings: empty, status: { working }, initialTab: tab, onChange: {}, onClose: {}),
+                 size: NSSize(width: 640, height: 700), to: directory.appendingPathComponent("settings-\(tab + 1)-empty.png"))
+        }
+
         save(RunningAppsPicker(excluded: [], onAdd: { _ in }), size: NSSize(width: 540, height: 540),
              to: directory.appendingPathComponent("picker.png"))
     }
@@ -32,7 +42,7 @@ enum UISnapshots {
             styleMask: [.borderless],
             backing: .buffered,
             defer: false)
-        window.appearance = NSAppearance(named: .darkAqua)
+        window.appearance = NSAppearance(named: .aqua)
         window.contentView = hosting
         window.orderFrontRegardless()
         hosting.layoutSubtreeIfNeeded()
