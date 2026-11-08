@@ -122,14 +122,19 @@ dotnet test IbaKeyMorph.Core.Tests && (cd ../macos && swift test)          # п�
 
 ## Оформление
 
-Иконки, логотип в окнах и картинки установщика собираются из одной панды скриптом:
+Интерфейс и значки следуют брендбуку IBA (ред. 4.2): синий `#0055FD`, Ink `#101421`, Mist `#F0F3FA`,
+оранжевая точка `#FFA500`, шрифт Manrope (встроен; Segoe UI / системный — запасной), панда IBA.
+Правила, палитра и список файлов — в [BRAND.md](BRAND.md).
+
+Иконки и картинки установщика собираются из мастеров панды в `assets/brand/` (панда не перерисовывается,
+только масштабируется и кадрируется):
 
 ```bash
-python3 assets/make-assets.py      # нужен Pillow
+python3 assets/make-assets.py      # icon-1024.png, icon-macos-1024.png, installer/*.bmp (нужен Pillow)
 ```
 
-Чтобы использовать фирменную панду IBA, положите её как `assets/panda-source.png` (квадрат от 512 px)
-и запустите скрипт: он обновит `keymorph.ico`, `icon-1024.png`, `panda-logo.png` и `assets/installer/*.bmp`.
+`keymorph.ico` и `panda-logo.png` экспортирует общий скрипт бренда `make-icons.ps1`
+(команда — в BRAND.md). Чтобы сменить панду, замените файлы в `assets/brand/` и запустите оба скрипта.
 
 ## Сборка из исходников
 
@@ -153,7 +158,7 @@ swift test
 
 ```
 data/                     словари и тестовые наборы (общие для обеих платформ)
-assets/                   иконка и звук
+assets/                   панда-мастера (brand/), иконки, шрифт Manrope (fonts/), баннеры установщика, звук
 windows/
   IbaKeyMorph.Core/       ядро: модель языка, решение, движок набора, конвертер текста
   IbaKeyMorph.Core.Tests/ xUnit-тесты ядра и качества распознавания
