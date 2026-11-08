@@ -32,13 +32,23 @@ internal static class UiSnapshots
         }
 
         SaveTrayIcons(Path.Combine(directory, "tray-icons.png"));
+        SaveTrayMenu(Path.Combine(directory, "tray-menu.png"));
 
         using (var about = new AboutForm())
         {
             Save(about, Path.Combine(directory, "about.png"));
         }
 
-        using (var picker = new AppPickerForm(Array.Empty<string>()))
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var sample = new[]
+        {
+            new AppEntry("notepad", "Блокнот", Path.Combine(windows, "notepad.exe")),
+            new AppEntry("mspaint", "Paint", Path.Combine(windows, "System32", "mspaint.exe")),
+            new AppEntry("explorer", "Проводник", Path.Combine(windows, "explorer.exe")),
+            new AppEntry("calc", "Калькулятор", Path.Combine(windows, "System32", "calc.exe")),
+            new AppEntry("windowsterminal", "Windows Terminal", null),
+        };
+        using (var picker = new AppPickerForm(Array.Empty<string>(), sample))
         {
             Save(picker, Path.Combine(directory, "picker.png"));
         }
@@ -64,6 +74,26 @@ internal static class UiSnapshots
         }
 
         sheet.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+    }
+
+    /// <summary>The tray menu, drawn the way it opens (turned on, automatic switching on).</summary>
+    private static void SaveTrayMenu(string path)
+    {
+        var menu = new TrayMenu(() => { }, () => { }, () => { }, () => { }, () => { }, () => { }, () => { }, () => { });
+        menu.Enabled.Checked = true;
+        menu.AutoSwitch.Checked = true;
+        menu.Strip.Show(new Point(60, 60));
+        for (var i = 0; i < 5; i++)
+        {
+            Application.DoEvents();
+            Thread.Sleep(50);
+        }
+
+        using var bitmap = new Bitmap(menu.Strip.Width, menu.Strip.Height);
+        menu.Strip.DrawToBitmap(bitmap, new Rectangle(Point.Empty, menu.Strip.Size));
+        bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+        menu.Strip.Close();
+        menu.Strip.Dispose();
     }
 
     private static void Save(Form form, string path)

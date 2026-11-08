@@ -9,10 +9,12 @@ internal sealed class AppPickerForm : Form
     private readonly AppListView _list = new(checkBoxes: true) { MultiSelect = false };
     private readonly HashSet<string> _checked = new(StringComparer.OrdinalIgnoreCase);
     private readonly Label _empty = Theme.EmptyState(string.Empty);
+    private readonly IReadOnlyList<AppEntry>? _sample;
     private IReadOnlyList<AppEntry> _apps = Array.Empty<AppEntry>();
 
-    public AppPickerForm(IEnumerable<string> alreadyExcluded)
+    public AppPickerForm(IEnumerable<string> alreadyExcluded, IReadOnlyList<AppEntry>? sample = null)
     {
+        _sample = sample;
         _alreadyExcluded = new HashSet<string>(alreadyExcluded, StringComparer.OrdinalIgnoreCase);
         Text = "Добавить программы";
         Icon = TrayIcons.AppIcon;
@@ -120,7 +122,8 @@ internal sealed class AppPickerForm : Form
         Cursor = Cursors.WaitCursor;
         try
         {
-            _apps = AppCatalog.Running(_background.Checked)
+            // --render-ui passes a fixed sample so screenshots show no one's real programs.
+            _apps = (_sample ?? AppCatalog.Running(_background.Checked))
                 .Where(a => !_alreadyExcluded.Contains(a.ProcessName))
                 .ToList();
             foreach (var app in _apps)

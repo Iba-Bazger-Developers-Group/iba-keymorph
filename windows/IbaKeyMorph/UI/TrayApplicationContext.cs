@@ -25,32 +25,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settings = AppSettings.Load();
         _service = new KeyMorphService(_settings, SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext());
 
-        _enabledItem = new ToolStripMenuItem("Включено", null, (_, _) => ToggleEnabled()) { CheckOnClick = false };
-        _autoSwitchItem = new ToolStripMenuItem("Автоматическое переключение", null, (_, _) => ToggleAutoSwitch());
-        _diagnosticsItem = new ToolStripMenuItem("Подробная диагностика (пишет слова в журнал)", null, (_, _) => ToggleDiagnostics());
-        var menu = new ContextMenuStrip
-        {
-            Renderer = new BrandMenuRenderer(),
-            BackColor = Theme.Surface,
-            ForeColor = Theme.Text,
-            Font = Theme.Font(9.5f),
-            ShowImageMargin = true,
-        };
-        menu.Items.Add(new ToolStripMenuItem("IBA KeyMorph", Theme.Panda, (_, _) => ShowAbout()) { Font = Theme.Font(9.5f, FontStyle.Bold) });
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(_enabledItem);
-        menu.Items.Add(_autoSwitchItem);
-        menu.Items.Add(new ToolStripMenuItem("Исправить выделенный текст", null, (_, _) => ConvertSelectionFromMenu())
-        {
-            ShortcutKeyDisplayString = "Shift+Pause",
-        });
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Настройки…", null, (_, _) => ShowSettings()));
-        menu.Items.Add(new ToolStripMenuItem("О программе", null, (_, _) => ShowAbout()));
-        menu.Items.Add(new ToolStripMenuItem("Открыть журнал", null, (_, _) => Log.Open()));
-        menu.Items.Add(_diagnosticsItem);
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Выход", null, (_, _) => ExitThread()));
+        var tray = new TrayMenu(
+            ShowAbout, ToggleEnabled, ToggleAutoSwitch, ConvertSelectionFromMenu, ShowSettings, Log.Open,
+            ToggleDiagnostics, ExitThread);
+        _enabledItem = tray.Enabled;
+        _autoSwitchItem = tray.AutoSwitch;
+        _diagnosticsItem = tray.Diagnostics;
+        var menu = tray.Strip;
         menu.Opening += (_, _) => RefreshMenu();
 
         _tray = new NotifyIcon
