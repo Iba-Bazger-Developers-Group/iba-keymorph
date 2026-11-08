@@ -1,0 +1,94 @@
+title: IBA KeyMorph 如何工作：键盘布局切换器
+description: 在 Windows 或 Mac 上安装 IBA KeyMorph，了解它如何在输入时自动纠正 EN 和 RU 布局错误，以及如何设置快捷键、例外和选项。
+h1: IBA KeyMorph 键盘布局切换器：安装与设置
+lead: 想输入“привет”却打成了“ghbdtn”？IBA KeyMorph 是适用于 Windows 和 macOS 的键盘布局切换器：你按下空格时，它会发现错误，删除这个词，并用正确的布局重新输入。一切都在你的电脑上完成，无需联网。
+card: 安装、首次启动、快捷键、例外和 EN/RU 布局自动纠正的设置。
+updated: 2026-11-08
+order: 26
+---
+<h2>IBA KeyMorph 能做什么</h2>
+<p>IBA KeyMorph 会关注你正在输入的词。当这个词输入完毕（你按了空格、Enter 或 Tab），并且看起来像是用另一种布局输入的文字时，程序会替换它并切换布局，让你接着正常输入：</p>
+<ul>
+<li><code>ghbdtn</code> → “привет”；</li>
+<li><code>руддщ</code> → “hello”；</li>
+<li><code>Ghbdtn? rfr ltkf&amp;</code> → “Привет, как дела?”——大小写和标点都会保留。</li>
+</ul>
+<p>支持 EN 和 RU 两种布局。按键不会被保存，也不会发送到任何地方：内存中只保留当前词和上一个词。</p>
+<figure class="g-figure">
+<img src="/keymorph-settings-general.png" width="664" height="739" loading="lazy" decoding="async" alt="IBA KeyMorph 设置窗口的“常规”标签页：显示正在运行的“状态”卡片、“常规”“例外”“程序”三个标签页、自动纠正的蓝色开关，以及“保存”和“取消”按钮">
+<figcaption>Windows 设置窗口：状态、标签页和开关。程序界面为俄语。</figcaption>
+</figure>
+
+<h2>第一步：安装程序</h2>
+<p>在 <a href="store:">store.ibateam.org</a> 下载适合你系统的 IBA KeyMorph。</p>
+<p><strong>Windows 10 和 11。</strong>有两种方式：安装程序（<code>…-setup.exe</code> 文件）和单文件便携版。安装程序不需要管理员权限：它只为你的账户安装，添加“开始”菜单快捷方式，并可按需设置登录 Windows 时自动启动。ARM 笔记本有单独的版本。</p>
+<p><strong>macOS 13 及更高版本。</strong>解压压缩包，把“IBA KeyMorph”拖到“应用程序”文件夹。首次启动时 macOS 可能提示无法验证该应用：打开“系统设置”→“隐私与安全性”，点击“仍要打开”。</p>
+
+<h2>第二步：首次启动</h2>
+<p><strong>Windows。</strong>启动后，时钟旁的通知区域会出现图标，并显示消息“IBA KeyMorph 正在运行”。如果看不到图标，请点击“显示隐藏的图标”箭头。图标显示当前的布局：</p>
+<figure class="g-figure">
+<img src="/keymorph-tray-icons.png" width="592" height="160" loading="lazy" decoding="async" alt="四个托盘图标：蓝底的“EN”、橙底的“RU”、深色底的“UK”，以及程序关闭时的灰色“EN”">
+<figcaption>托盘图标（已放大）：EN 为蓝色，RU 为橙色，其他布局为深色，灰色表示程序已关闭。</figcaption>
+</figure>
+<p>右键点击图标打开菜单，双击图标打开设置。</p>
+<figure class="g-figure">
+<img src="/keymorph-tray-menu.png" width="369" height="220" loading="lazy" decoding="async" alt="托盘图标菜单：带勾选的“已启用”和“自动切换”，以及“纠正选中的文字”“设置…”“关于”“打开日志”“详细诊断”和“退出”">
+<figcaption>托盘图标菜单：开启或关闭程序、纠正选中的文字、打开设置和日志。菜单为俄语。</figcaption>
+</figure>
+<p><strong>macOS。</strong>程序位于菜单栏（显示 EN 或 RU），没有窗口，也不会在 Dock 中显示图标。为了读取按键并输入纠正后的文字，程序需要权限：点击“授予权限…”，并在“辅助功能”中打开 IBA KeyMorph 的开关，无需重启程序。如果菜单栏标签旁出现“⚠︎”，说明尚未获得权限。程序更新后需要重新授权：再次点击“授予权限…”并打开开关。</p>
+
+<h2>自动纠正如何工作</h2>
+<ol>
+<li>像平时一样输入。如果某个词用错了布局，按空格、Enter 或 Tab。</li>
+<li>IBA KeyMorph 借助词典和语言模型，把输入的词与其在另一种布局下的写法比较。词典里有的词不会改动；从两个字母起才会纠正。</li>
+<li>如果另一种布局下的写法明显更合理，就会删除这个词并重新输入，同时切换布局。</li>
+</ol>
+<p>另外：已纠正的词前面的短词也会一并纠正（“z ns”→“я ты”）；不小心开着 Caps Lock 输入的词（“пРИВЕТ”）会变成“Привет”，并自动关闭 Caps Lock。</p>
+<p class="g-note">程序不会干预密码框、macOS 的安全输入，以及（在 Windows 上）以管理员身份运行的窗口。这样做是为了不在不容出错的地方干扰输入。</p>
+
+<h2>不需要纠正时</h2>
+<p>纠正错误后立即按 <kbd>Pause</kbd> 或连按两次 <kbd>Shift</kbd>（在 Mac 上连按两次 <kbd>⇧</kbd>）。词会恢复成你输入的样子，并被加入例外列表，程序以后不会再改动它。</p>
+
+<h2>快捷键</h2>
+<ul>
+<li><strong>纠正上一个词或撤销纠正：</strong>Windows——<kbd>Pause</kbd> 或连按两次 <kbd>Shift</kbd>；macOS——连按两次 <kbd>⇧</kbd>。</li>
+<li><strong>纠正选中的文字：</strong>Windows——<kbd>Shift</kbd>+<kbd>Pause</kbd>；macOS——连按两次 <kbd>⌥</kbd>。剪贴板内容会被保存并在之后恢复。</li>
+<li><strong>打开设置：</strong>Windows——双击托盘图标；macOS——菜单栏菜单→“设置…”。</li>
+</ul>
+<p>“连按两次 Shift”指快速按两下这个键，中间不按其他键。如果笔记本键盘没有 Pause 键，请使用连按两次 Shift。</p>
+
+<h2>设置</h2>
+<p>“常规”标签页可单独开关各项功能：自动纠正、纠正前面的短词、防止误开 Caps Lock、快捷键、切换提示音和开机自动启动。点击“保存”后更改生效。</p>
+<p>“例外”标签页保存永远不会被纠正的词，每行一个。撤销纠正时，词会自动加到这里，你也可以手动添加或清空。</p>
+<figure class="g-figure">
+<img src="/keymorph-settings-exceptions.png" width="664" height="739" loading="lazy" decoding="async" alt="IBA KeyMorph 设置中的“例外”标签页：用于存放无需纠正的词的空白区域，并有说明词是如何出现在这里的提示">
+<figcaption>“例外”标签页：列表为空时，程序会提示词是怎样进入这里的。</figcaption>
+</figure>
+<p>“程序”标签页列出了关闭自动纠正的程序：终端、密码管理器、远程桌面。列表可以修改：添加已打开的程序，或选择 <code>.exe</code> 文件（在 Mac 上选择应用），并用“删除”按钮或 Delete 键移除条目。</p>
+<figure class="g-figure">
+<img src="/keymorph-settings-programs.png" width="664" height="739" loading="lazy" decoding="async" alt="“程序”标签页：带图标和进程名的程序列表，以及“从运行中的程序添加…”“选择 .exe…”和“删除”按钮">
+<figcaption>“程序”标签页：不纠正布局的程序。底部的按钮用于添加和移除程序。</figcaption>
+</figure>
+<p>“从运行中的程序添加…”按钮会打开可搜索的已打开程序列表。勾选需要的程序，然后点击“添加”。</p>
+<figure class="g-figure">
+<img src="/keymorph-app-picker.png" width="536" height="599" loading="lazy" decoding="async" alt="“添加程序”窗口：标题为“在哪些程序中不纠正布局？”，含搜索框、“显示后台进程”开关、带复选框的程序列表，以及“添加”和“取消”按钮">
+<figcaption>选择要排除的程序。列表中的示例为 Windows 自带程序。</figcaption>
+</figure>
+
+<h2>关于与日志</h2>
+<p>菜单项“关于”会显示版本并提示快捷键。如果出现问题，请在托盘菜单中选择“打开日志”：<code>keymorph.log</code> 文件位于 <code>%APPDATA%\IBA\KeyMorph</code>（Mac 上是 <code>~/Library/Logs/IBA KeyMorph</code>）。</p>
+<figure class="g-figure">
+<img src="/keymorph-about.png" width="536" height="559" loading="lazy" decoding="async" alt="“关于 IBA KeyMorph”窗口：IBA 熊猫、名称、版本 1.0.3、快捷键列表和“关闭”按钮">
+<figcaption>“关于”窗口：版本和快捷键。</figcaption>
+</figure>
+<p class="g-note">“详细诊断”会把每个输入的词写入日志。只在排查问题时开启，不要把这样的日志发给他人，检查完毕后请关闭。</p>
+
+<h2>无法工作时</h2>
+<ul>
+<li>检查托盘菜单中的“已启用”和“自动切换”是否已勾选，以及“常规”标签页中的自动纠正是否开启。</li>
+<li>自动纠正需要系统中同时安装 EN 和 RU 两种布局。缺少其中一种时，设置窗口会显示提示。</li>
+<li>在以管理员身份运行的窗口（Windows）和密码框中，程序会刻意不工作。如有需要，请以管理员身份运行 IBA KeyMorph。</li>
+<li>该程序可能在例外列表中：请查看“程序”标签页。</li>
+<li>在 Mac 上，请检查“辅助功能”中的权限；如果更新后开关看似已开启但程序没有反应，请点击“授予权限…”。</li>
+</ul>
+<p>适用于 Windows 和 macOS 的最新版本始终可在 <a href="store:">store.ibateam.org</a> 获取。</p>

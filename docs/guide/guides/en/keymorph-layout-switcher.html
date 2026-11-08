@@ -1,0 +1,94 @@
+title: How IBA KeyMorph works: a keyboard layout switcher
+description: Install IBA KeyMorph on Windows or Mac, learn how it fixes the wrong EN and RU keyboard layout as you type, and set up hotkeys, exceptions and settings.
+h1: IBA KeyMorph keyboard layout switcher: install and set up
+lead: Typed “ghbdtn” instead of “привет”? IBA KeyMorph is a keyboard layout switcher for Windows and macOS: it notices the mistake when you press space, erases the word and types it again in the right layout. It works on your computer, without the network.
+card: Install, first launch, hotkeys, exceptions and settings for automatic EN and RU layout correction.
+updated: 2026-11-08
+order: 26
+---
+<h2>What IBA KeyMorph does</h2>
+<p>IBA KeyMorph watches the word you are typing. When the word is finished (you press space, Enter or Tab) and looks like text typed in the other layout, the app replaces it and switches the layout so you can keep typing without mistakes:</p>
+<ul>
+<li><code>ghbdtn</code> → “привет”;</li>
+<li><code>руддщ</code> → “hello”;</li>
+<li><code>Ghbdtn? rfr ltkf&amp;</code> → “Привет, как дела?” — capital letters and punctuation are kept.</li>
+</ul>
+<p>The EN and RU layouts are supported. Keystrokes are not saved or sent anywhere: only the current and the previous word are kept in memory.</p>
+<figure class="g-figure">
+<img src="/keymorph-settings-general.png" width="664" height="739" loading="lazy" decoding="async" alt="IBA KeyMorph settings window, the General tab: a Status card showing it is running, tabs for General, Exceptions and Programs, blue switches for automatic correction, and Save and Cancel buttons">
+<figcaption>The Windows settings window: status, tabs and switches. The app interface is in Russian.</figcaption>
+</figure>
+
+<h2>Step 1. Install the app</h2>
+<p>Download IBA KeyMorph for your system at <a href="store:">store.ibateam.org</a>.</p>
+<p><strong>Windows 10 and 11.</strong> There are two options: an installer (the <code>…-setup.exe</code> file) and a portable one-file version. The installer does not need administrator rights: it installs the app for your account, adds a Start menu shortcut and, if you want, starts the app when you sign in to Windows. Separate builds are available for ARM laptops.</p>
+<p><strong>macOS 13 and later.</strong> Unpack the archive and move “IBA KeyMorph” to the Applications folder. On first launch macOS may say it cannot verify the app: open System Settings → Privacy &amp; Security and click “Open Anyway”.</p>
+
+<h2>Step 2. First launch</h2>
+<p><strong>Windows.</strong> After launch an icon appears in the notification area next to the clock, together with the message “IBA KeyMorph is running”. If you do not see the icon, click the “Show hidden icons” arrow. The icon shows the current layout:</p>
+<figure class="g-figure">
+<img src="/keymorph-tray-icons.png" width="592" height="160" loading="lazy" decoding="async" alt="Four tray icons: “EN” on blue, “RU” on orange, “UK” on dark, and a grey “EN” for a switched-off app">
+<figcaption>Tray icons (enlarged): EN is blue, RU is orange, another layout is dark, grey means the app is off.</figcaption>
+</figure>
+<p>Right-click the icon to open the menu, or double-click it to open the settings.</p>
+<figure class="g-figure">
+<img src="/keymorph-tray-menu.png" width="369" height="220" loading="lazy" decoding="async" alt="The tray icon menu: “Enabled” and “Automatic switching” with check marks, “Fix selected text”, “Settings…”, “About”, “Open log”, “Detailed diagnostics” and “Exit”">
+<figcaption>The tray icon menu: turn the app on or off, fix selected text, open the settings and the log. The menu is in Russian.</figcaption>
+</figure>
+<p><strong>macOS.</strong> The app lives in the menu bar (the label EN or RU); it has no window and no Dock icon. To see your keystrokes and type corrections it needs access: click “Grant access…” and turn on the switch for IBA KeyMorph in Accessibility. You do not need to restart the app. A “⚠︎” next to the menu bar label means access has not been granted yet. After an app update, grant access again: click “Grant access…” once more and turn the switch on.</p>
+
+<h2>How automatic correction works</h2>
+<ol>
+<li>Type as usual. If you typed a word in the wrong layout, press space, Enter or Tab.</li>
+<li>IBA KeyMorph compares the typed word with its version in the other layout, using dictionaries and a language model. Words found in a dictionary are left alone; correction starts from two letters.</li>
+<li>If the other-layout version is clearly more plausible, the word is erased and typed again, and the layout is switched.</li>
+</ol>
+<p>Also: a short word before the corrected one is fixed too (“z ns” → “я ты”), and a word typed with Caps Lock on by accident (“пРИВЕТ”) becomes “Привет” and Caps Lock is turned off.</p>
+<p class="g-note">The app stays out of password fields, macOS secure input and (on Windows) windows running as administrator. This is so it does not disturb input where mistakes are not acceptable.</p>
+
+<h2>If you do not want the correction</h2>
+<p>Right after a wrong correction press <kbd>Pause</kbd> or double-press <kbd>Shift</kbd> (on a Mac, double-press <kbd>⇧</kbd>). The word returns to what you typed and is added to the exceptions list: the app will not touch it again.</p>
+
+<h2>Hotkeys</h2>
+<ul>
+<li><strong>Fix the last word or undo the correction:</strong> Windows — <kbd>Pause</kbd> or double <kbd>Shift</kbd>; macOS — double <kbd>⇧</kbd>.</li>
+<li><strong>Fix the selected text:</strong> Windows — <kbd>Shift</kbd>+<kbd>Pause</kbd>; macOS — double <kbd>⌥</kbd>. The clipboard contents are saved and restored.</li>
+<li><strong>Open the settings:</strong> Windows — double-click the tray icon; macOS — the menu bar menu → “Settings…”.</li>
+</ul>
+<p>“Double Shift” means two quick presses of the key with no other key in between. If your laptop keyboard has no Pause key, use double Shift.</p>
+
+<h2>Settings</h2>
+<p>The General tab turns individual features on and off: automatic correction, fixing the short word before, protection from accidental Caps Lock, hotkeys, the switching sound and start with the system. Changes take effect after you click Save.</p>
+<p>The Exceptions tab holds the words that are never corrected, one per line. A word gets there by itself when you undo a correction, and you can add to or clear the list by hand.</p>
+<figure class="g-figure">
+<img src="/keymorph-settings-exceptions.png" width="664" height="739" loading="lazy" decoding="async" alt="The Exceptions tab in IBA KeyMorph settings: an empty field for words that should not be corrected, with a hint on how words appear there">
+<figcaption>The Exceptions tab: while the list is empty, the app explains how words get here.</figcaption>
+</figure>
+<p>The Programs tab lists the programs where automatic correction is off: terminals, password managers, remote desktop. You can change the list: add open programs or pick an <code>.exe</code> file (on a Mac, an application), and remove lines with the Remove button or the Delete key.</p>
+<figure class="g-figure">
+<img src="/keymorph-settings-programs.png" width="664" height="739" loading="lazy" decoding="async" alt="The Programs tab: a list of programs with icons and process names, and the buttons Add from running, Choose .exe and Remove">
+<figcaption>The Programs tab: where the layout is not corrected. The buttons at the bottom add and remove programs.</figcaption>
+</figure>
+<p>The “Add from running…” button opens a searchable list of open programs. Tick the ones you need and click Add.</p>
+<figure class="g-figure">
+<img src="/keymorph-app-picker.png" width="536" height="599" loading="lazy" decoding="async" alt="The Add programs window: the heading “Where not to correct the layout?”, a search field, a “Show background processes” switch, a list of programs with check boxes, and the Add and Cancel buttons">
+<figcaption>Choosing programs to exclude. The programs in the list are standard Windows examples.</figcaption>
+</figure>
+
+<h2>About and the log</h2>
+<p>The “About” menu item shows the version and reminds you of the hotkeys. If something does not work, choose “Open log” in the tray menu: the <code>keymorph.log</code> file is in <code>%APPDATA%\IBA\KeyMorph</code> (on a Mac, <code>~/Library/Logs/IBA KeyMorph</code>).</p>
+<figure class="g-figure">
+<img src="/keymorph-about.png" width="536" height="559" loading="lazy" decoding="async" alt="The About IBA KeyMorph window: the IBA panda, the name, version 1.0.3, a list of hotkeys and a Close button">
+<figcaption>The About window: version and hotkeys.</figcaption>
+</figure>
+<p class="g-note">“Detailed diagnostics” writes every typed word to the log. Turn it on only while you look for a problem, do not share such a log with other people, and turn it off afterwards.</p>
+
+<h2>If it does not work</h2>
+<ul>
+<li>Check that “Enabled” and “Automatic switching” are ticked in the tray menu and that automatic correction is on in the General tab.</li>
+<li>Automatic correction needs both layouts, EN and RU, installed in the system. If one is missing, the settings window shows a warning.</li>
+<li>In windows running as administrator (Windows) and in password fields the app deliberately does nothing. If you need it, run IBA KeyMorph as administrator.</li>
+<li>The program may be in the exceptions list: check the Programs tab.</li>
+<li>On a Mac, check access in Accessibility and click “Grant access…” if after an update the switch looks on but the app does nothing.</li>
+</ul>
+<p>The latest versions for Windows and macOS are always at <a href="store:">store.ibateam.org</a>.</p>
