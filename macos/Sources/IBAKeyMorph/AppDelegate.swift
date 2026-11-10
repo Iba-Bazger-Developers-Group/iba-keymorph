@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.info("IBA KeyMorph \(AppResources.version) (\(AppResources.build)) on macOS " +
                  "\(ProcessInfo.processInfo.operatingSystemVersionString), \(Self.architecture), " +
                  "app: \(Bundle.main.bundlePath)")
+        LaunchServicesRefresh.run()
         Log.info("Access: accessibility \(Permissions.isTrusted(prompt: false)), " +
                  "input monitoring \(Permissions.canListen), post events \(Permissions.canPost)")
 

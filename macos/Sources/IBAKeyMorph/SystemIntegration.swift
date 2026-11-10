@@ -106,6 +106,47 @@ enum LoginItem {
     }
 }
 
+/// After an update macOS can keep showing the previous icon (Finder, Dock, Launchpad) and can know several copies of the app.
+/// On the first start of a new version the app registers itself again with Launch Services and touches its own bundle so the
+/// icon caches are rebuilt; it also writes every copy macOS knows into the log. Nothing is deleted.
+enum LaunchServicesRefresh {
+    private static let versionKey = "launchServicesRegisteredBuild"
+    private static let lsregister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/" +
+        "LaunchServices.framework/Support/lsregister"
+
+    static func run() {
+        let path = Bundle.main.bundlePath
+        guard path.hasSuffix(".app") else { return } // `swift run` has no bundle
+
+        let copies = NSWorkspace.shared.urlsForApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
+            .map(\.path)
+        if copies.count > 1 {
+            Log.info("Several copies of IBA KeyMorph are known to macOS: \(copies.joined(separator: "; ")). " +
+                     "Running: \(path). Remove the old ones (macos/scripts/update-keymorph.sh does it).")
+        }
+
+        let current = "\(AppResources.version)-\(AppResources.build)"
+        let defaults = UserDefaults.standard
+        guard defaults.string(forKey: versionKey) != current else { return }
+        defaults.set(current, forKey: versionKey)
+
+        DispatchQueue.global(qos: .utility).async {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: lsregister)
+            process.arguments = ["-f", path]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            if (try? process.run()) != nil {
+                process.waitUntilExit()
+            }
+
+            // A fresh modification date makes Finder and the Dock look at the bundle's icon again.
+            try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: path)
+            Log.info("Registered \(path) with Launch Services for \(current)")
+        }
+    }
+}
+
 enum AppResources {
     /// Loads the word lists bundled in Contents/Resources (or data/ in a source checkout for `swift run`).
     static func loadLanguages() throws -> LanguageStore {
