@@ -69,8 +69,8 @@
 
 ```powershell
 # Windows .ico (из корня репозитория) и панда для окон
-powershell -File C:\MyFiles\iba-branding\make-icons.ps1 -Source assetsrand\iba-app-icon-1024.png -Ico assets\keymorph.ico
-powershell -File C:\MyFiles\iba-branding\make-icons.ps1 -Source assetsrand\iba-icon-jade-1024.png -Resize assets\panda-logo.png
+powershell -File C:\MyFiles\iba-branding\make-icons.ps1 -Source assets\brand\iba-app-icon-1024.png -Ico assets\keymorph.ico
+powershell -File C:\MyFiles\iba-branding\make-icons.ps1 -Source assets\brand\iba-icon-jade-1024.png -Resize assets\panda-logo.png
 python assets\make-assets.py     # icon-1024.png, icon-macos-1024.png, menu-glyph.png, installer\*.bmp (нужен Pillow)
 ```
 
