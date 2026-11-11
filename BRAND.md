@@ -48,27 +48,33 @@
 
 ## Иконки и картинки
 
-Панда не перерисовывается — только масштабируется и кадрируется из мастеров IBA
-(`C:\MyFiles\iba-branding`), копии лежат в `assets/brand/`:
+**Иконка приложения — общий синий знак IBA с глобусом и орбитой, один у всех приложений IBA** (решение владельца;
+как у Accounting и CRM). Мастер — `assets/brand/iba-app-icon-1024.png` (копия
+`IBA_Accounting/assets/brand/app-icon-1024.png`); не перерисовывается, только масштабируется и кадрируется.
+**Панда остаётся внутри приложения** (шапка настроек, «О программе», баннер установщика).
 
 | Файл | Из чего / чем |
 |---|---|
-| `assets/icon-1024.png` | мастер иконки `iba-icon-jade-1024.png`, без изменений |
-| `assets/keymorph.ico` | `make-icons.ps1 -Ico` (16–256), значок exe, окон и установщика |
-| `assets/panda-logo.png` | `make-icons.ps1 -Resize`, 512 px, шапка настроек и «О программе» (углы скругляются в коде) |
-| `assets/icon-macos-1024.png` | `make-assets.py`: мастер в плитке macOS (824 px, скруглённый квадрат на 1024) → `AppIcon.icns` в `build-app.sh` |
-| `assets/installer/*.bmp` | `make-assets.py`: баннер из `panda-jade-staff-sky-1254.png` + «IBA KeyMorph•», малый значок — мастер |
+| `assets/icon-1024.png` | мастер иконки, без изменений |
+| `assets/keymorph.ico` | `make-icons.ps1 -Ico` (16, 24, 32, 48, 64, 128, 256 — как у Accounting): значок exe, окон и установщика |
+| `assets/icon-macos-1024.png` | `make-assets.py`: мастер в плитке macOS (824 px, скруглённый квадрат на 1024) → `AppIcon.icns` в `build-app.sh` (16–512 и @2x) |
+| `assets/menu-glyph.png` | `make-assets.py`: монохромный глиф «глобус + орбита» (44×22, чёрный с альфой), вырезан из мастера, без текста; в строке меню macOS — template-изображение (`isTemplate`), macOS красит его под тему |
+| `assets/panda-logo.png` | `make-icons.ps1 -Resize` из панды `iba-icon-jade-1024.png`, 512 px: шапка настроек и «О программе» (углы скругляются в коде) |
+| `assets/installer/*.bmp` | `make-assets.py`: баннер из `panda-jade-staff-sky-1254.png` + «IBA KeyMorph•»; малый значок — иконка приложения |
 
-Иконка трея (Windows) и надпись в строке меню (macOS) показывают **текущую раскладку** — это функция
-программы, поэтому там не панда, а буквы: EN — синий значок, RU — оранжевый (Ink-буквы), прочие — Ink,
-выключено — серый. Строка меню macOS — системный текст (`EN`/`RU`, цвет меню).
+**Строка меню macOS:** глиф (template) слева + текущая раскладка текстом `EN`/`RU` (функция программы, системный цвет).
+**Трей Windows:** показывает текущую раскладку, поэтому остаётся значком с буквами (EN — синий, RU — оранжевый с Ink-буквами,
+прочие — Ink, выключено — серый), а не картинкой: глиф размером 16 px не различает раскладки, а цвет без буквы не
+несёт смысла (брендбук, стр. 78). Иконка приложения (`keymorph.ico`) видна в окнах, «Пуске», установщике.
 
 ```powershell
-# Windows .ico и 512-px логотип (из корня репозитория)
-powershell -File C:\MyFiles\iba-branding\make-icons.ps1 `
-  -Source assets\brand\iba-icon-jade-1024.png -Ico assets\keymorph.ico -Resize assets\panda-logo.png
-python assets\make-assets.py     # icon-1024.png, icon-macos-1024.png, installer\*.bmp (нужен Pillow)
+# Windows .ico (из корня репозитория) и панда для окон
+powershell -File C:\MyFiles\iba-branding\make-icons.ps1 -Source assetsrand\iba-app-icon-1024.png -Ico assets\keymorph.ico
+powershell -File C:\MyFiles\iba-branding\make-icons.ps1 -Source assetsrand\iba-icon-jade-1024.png -Resize assets\panda-logo.png
+python assets\make-assets.py     # icon-1024.png, icon-macos-1024.png, menu-glyph.png, installer\*.bmp (нужен Pillow)
 ```
+
+Как заменяются иконки у пользователей (ярлыки, кеш значков, старые копии на Mac) — `docs/ICON-UPDATE.md`.
 
 ## Проверка интерфейса без экрана
 

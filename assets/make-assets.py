@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
-"""Derived IBA KeyMorph images, built from the IBA panda masters in assets/brand/.
+"""Derived IBA KeyMorph images, built from the IBA masters in assets/brand/.
 
     python3 assets/make-assets.py            # needs Pillow
 
-The panda artwork is never redrawn: the masters (copied from the IBA brand folder) are only resized,
-cropped and placed on a canvas.
+Nothing is redrawn: the masters are only resized, cropped and placed on a canvas.
 
-  assets/brand/iba-icon-jade-1024.png          app icon master (panda + IBA.)    -> icon-1024.png (as is)
-  assets/brand/panda-jade-staff-sky-1254.png   panda with the staff on a clear sky -> installer banners
+  assets/brand/iba-app-icon-1024.png           APP ICON master: the blue IBA globe/orbit mark, the same for every IBA
+                                               app (copy of IBA_Accounting/assets/brand/app-icon-1024.png)
+  assets/brand/iba-icon-jade-1024.png          IBA panda: stays INSIDE the app (settings header, About window)
+  assets/brand/panda-jade-staff-sky-1254.png   panda with the staff on a clear sky -> installer banner
 
 Written by this script:
-  icon-1024.png         the icon master, unchanged (source of truth for every platform icon)
+  icon-1024.png         the app icon master, unchanged (source of truth for every platform icon)
   icon-macos-1024.png   the same icon in the macOS app-icon tile (824 px rounded square on 1024 px)
-  installer/*.bmp       Inno Setup wizard images (tall banner, small square)
+  menu-glyph.png        monochrome template glyph for the macOS menu bar (globe + orbit cut out of the master, 44x22,
+                        black with alpha; macOS tints it)
+  installer/*.bmp       Inno Setup wizard images (tall panda banner, small square with the app icon)
 
-Not written here — exported with the brand script (C:\\MyFiles\\iba-branding\\make-icons.ps1), see README:
-  keymorph.ico          Windows application / window icon
-  panda-logo.png        512 px logo shown in the settings and About windows
+Not written here - exported with the brand script (iba-branding/make-icons.ps1), see BRAND.md:
+  keymorph.ico          Windows application / window / installer icon (16-256) from the app icon master
+  panda-logo.png        512 px panda shown in the settings and About windows, from the panda master
 
 Brand colours (IBA brandbook 4.2): Blue #0055FD, Ink #101421, Mist #F0F3FA, Orange #FFA500.
 Banner type is Manrope (brand family) when it can be found, otherwise Segoe UI / DejaVu Sans Bold.
@@ -27,7 +30,7 @@ import shutil
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ICON_MASTER = os.path.join(HERE, "brand", "iba-icon-jade-1024.png")
+ICON_MASTER = os.path.join(HERE, "brand", "iba-app-icon-1024.png")
 SKY_MASTER = os.path.join(HERE, "brand", "panda-jade-staff-sky-1254.png")
 
 BLUE = (0, 85, 253)
@@ -97,12 +100,25 @@ def wizard_banner(w, h):
     return banner.resize((w, h), Image.LANCZOS)
 
 
+def menu_glyph(size=(44, 22)):
+    """Globe + orbit of the app icon as a black template image: the master's red channel is the white-on-blue coverage."""
+    ink = master(ICON_MASTER).split()[0].crop((205, 222, 845, 538))  # above the letters
+    ink = ink.point(lambda v: 0 if v < 40 else (255 if v > 215 else int((v - 40) * 255 / 175)))
+    glyph = ink.resize((size[0], round(ink.height * size[0] / ink.width)), Image.LANCZOS)
+    out = Image.new("RGBA", size, (0, 0, 0, 0))
+    black = Image.new("RGBA", glyph.size, (0, 0, 0, 255))
+    out.paste(black, ((size[0] - glyph.width) // 2, (size[1] - glyph.height) // 2), glyph)
+    return out
+
+
 def main():
     shutil.copyfile(ICON_MASTER, os.path.join(HERE, "icon-1024.png"))
 
     mac = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
     mac.alpha_composite(rounded_tile(master(ICON_MASTER), 824), (100, 100))
     mac.save(os.path.join(HERE, "icon-macos-1024.png"))
+
+    menu_glyph().save(os.path.join(HERE, "menu-glyph.png"))
 
     installer = os.path.join(HERE, "installer")
     os.makedirs(installer, exist_ok=True)

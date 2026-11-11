@@ -66,6 +66,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         // Without keyboard access the label says so instead of looking like a working layout indicator.
         let label = controller.isRunning ? layout : "\(layout) ⚠︎"
         let color: NSColor = active ? .labelColor : .tertiaryLabelColor
+        // Brand glyph (template: follows the menu bar colours) before the layout label.
+        statusItem.button?.image = AppResources.menuGlyph
+        statusItem.button?.imagePosition = AppResources.menuGlyph == nil ? .noImage : .imageLeft
         statusItem.button?.attributedTitle = NSAttributedString(
             string: label,
             attributes: [

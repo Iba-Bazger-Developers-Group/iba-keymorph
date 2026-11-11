@@ -19,7 +19,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/IBAKeyMorph" "$APP/Contents/MacOS/IBAKeyMorph"
 sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD_NUMBER/" Resources/Info.plist > "$APP/Contents/Info.plist"
 cp ../data/en.txt ../data/ru.txt "$APP/Contents/Resources/"
-cp ../assets/panda-logo.png "$APP/Contents/Resources/"
+cp ../assets/panda-logo.png ../assets/menu-glyph.png "$APP/Contents/Resources/"
 # Manrope (IBA brand typeface, SIL OFL): registered at run time by SettingsView (IBA.hasManrope).
 cp ../assets/fonts/Manrope-Regular.ttf ../assets/fonts/Manrope-Bold.ttf ../assets/fonts/OFL.txt "$APP/Contents/Resources/"
 

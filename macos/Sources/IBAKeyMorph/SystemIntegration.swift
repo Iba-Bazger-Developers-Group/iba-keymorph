@@ -179,6 +179,22 @@ enum AppResources {
         return NSImage(contentsOf: source) ?? NSImage(named: NSImage.applicationIconName) ?? NSImage()
     }()
 
+    /// Monochrome globe + orbit for the menu bar (Contents/Resources/menu-glyph.png, or assets/ in a source checkout).
+    /// A template image: macOS tints it for the light/dark menu bar and for highlighted state.
+    static let menuGlyph: NSImage? = {
+        let source = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("assets/menu-glyph.png")
+        let url = Bundle.main.url(forResource: "menu-glyph", withExtension: "png") ?? source
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        image.size = NSSize(width: 22, height: 11) // the file is 44x22 for Retina
+        image.isTemplate = true
+        return image
+    }()
+
     static var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }
